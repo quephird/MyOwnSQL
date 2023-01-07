@@ -8,6 +8,11 @@
 
 /* Begin PBXBuildFile section */
 		8728DA1E296772E500AB66A6 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8728DA1D296772E500AB66A6 /* main.swift */; };
+		8728DA252967734200AB66A6 /* Types.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8728DA242967734200AB66A6 /* Types.swift */; };
+		8728DA272967817D00AB66A6 /* Lexers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8728DA262967817D00AB66A6 /* Lexers.swift */; };
+		8728DA2F2968D8BA00AB66A6 /* LexerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8728DA2E2968D8BA00AB66A6 /* LexerTests.swift */; };
+		8728DA332968D99200AB66A6 /* Lexers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8728DA262967817D00AB66A6 /* Lexers.swift */; };
+		8728DA342968D99600AB66A6 /* Types.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8728DA242967734200AB66A6 /* Types.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -25,10 +30,21 @@
 /* Begin PBXFileReference section */
 		8728DA1A296772E500AB66A6 /* MyOwnSQL */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = MyOwnSQL; sourceTree = BUILT_PRODUCTS_DIR; };
 		8728DA1D296772E500AB66A6 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		8728DA242967734200AB66A6 /* Types.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Types.swift; sourceTree = "<group>"; };
+		8728DA262967817D00AB66A6 /* Lexers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Lexers.swift; sourceTree = "<group>"; };
+		8728DA2C2968D8BA00AB66A6 /* MyOwnSQLTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MyOwnSQLTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		8728DA2E2968D8BA00AB66A6 /* LexerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LexerTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		8728DA17296772E500AB66A6 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8728DA292968D8BA00AB66A6 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -42,6 +58,7 @@
 			isa = PBXGroup;
 			children = (
 				8728DA1C296772E500AB66A6 /* MyOwnSQL */,
+				8728DA2D2968D8BA00AB66A6 /* MyOwnSQLTests */,
 				8728DA1B296772E500AB66A6 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -50,6 +67,7 @@
 			isa = PBXGroup;
 			children = (
 				8728DA1A296772E500AB66A6 /* MyOwnSQL */,
+				8728DA2C2968D8BA00AB66A6 /* MyOwnSQLTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -58,8 +76,18 @@
 			isa = PBXGroup;
 			children = (
 				8728DA1D296772E500AB66A6 /* main.swift */,
+				8728DA242967734200AB66A6 /* Types.swift */,
+				8728DA262967817D00AB66A6 /* Lexers.swift */,
 			);
 			path = MyOwnSQL;
+			sourceTree = "<group>";
+		};
+		8728DA2D2968D8BA00AB66A6 /* MyOwnSQLTests */ = {
+			isa = PBXGroup;
+			children = (
+				8728DA2E2968D8BA00AB66A6 /* LexerTests.swift */,
+			);
+			path = MyOwnSQLTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -82,6 +110,23 @@
 			productReference = 8728DA1A296772E500AB66A6 /* MyOwnSQL */;
 			productType = "com.apple.product-type.tool";
 		};
+		8728DA2B2968D8BA00AB66A6 /* MyOwnSQLTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8728DA302968D8BA00AB66A6 /* Build configuration list for PBXNativeTarget "MyOwnSQLTests" */;
+			buildPhases = (
+				8728DA282968D8BA00AB66A6 /* Sources */,
+				8728DA292968D8BA00AB66A6 /* Frameworks */,
+				8728DA2A2968D8BA00AB66A6 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MyOwnSQLTests;
+			productName = MyOwnSQLTests;
+			productReference = 8728DA2C2968D8BA00AB66A6 /* MyOwnSQLTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -93,6 +138,9 @@
 				LastUpgradeCheck = 1340;
 				TargetAttributes = {
 					8728DA19296772E500AB66A6 = {
+						CreatedOnToolsVersion = 13.4.1;
+					};
+					8728DA2B2968D8BA00AB66A6 = {
 						CreatedOnToolsVersion = 13.4.1;
 					};
 				};
@@ -111,16 +159,39 @@
 			projectRoot = "";
 			targets = (
 				8728DA19296772E500AB66A6 /* MyOwnSQL */,
+				8728DA2B2968D8BA00AB66A6 /* MyOwnSQLTests */,
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		8728DA2A2968D8BA00AB66A6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		8728DA16296772E500AB66A6 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8728DA272967817D00AB66A6 /* Lexers.swift in Sources */,
 				8728DA1E296772E500AB66A6 /* main.swift in Sources */,
+				8728DA252967734200AB66A6 /* Types.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8728DA282968D8BA00AB66A6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8728DA342968D99600AB66A6 /* Types.swift in Sources */,
+				8728DA332968D99200AB66A6 /* Lexers.swift in Sources */,
+				8728DA2F2968D8BA00AB66A6 /* LexerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -262,6 +333,36 @@
 			};
 			name = Release;
 		};
+		8728DA312968D8BA00AB66A6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = GARV9392W2;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.quephird.MyOwnSQLTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		8728DA322968D8BA00AB66A6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = GARV9392W2;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.quephird.MyOwnSQLTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -279,6 +380,15 @@
 			buildConfigurations = (
 				8728DA22296772E500AB66A6 /* Debug */,
 				8728DA23296772E500AB66A6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8728DA302968D8BA00AB66A6 /* Build configuration list for PBXNativeTarget "MyOwnSQLTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8728DA312968D8BA00AB66A6 /* Debug */,
+				8728DA322968D8BA00AB66A6 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
