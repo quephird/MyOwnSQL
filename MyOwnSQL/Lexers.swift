@@ -100,7 +100,7 @@ func lexCharacterDelimited(_ source: String, _ cursor: Cursor, _ delimiter: Char
     cursorCopy.pointer += 1
 
     var value: String = ""
-    for _ in cursorCopy.pointer..<source.count {
+    while cursorCopy.pointer < source.count {
         let pointerIndex = source.index(source.startIndex, offsetBy: cursorCopy.pointer)
         let char = source[pointerIndex]
 
@@ -118,8 +118,8 @@ func lexCharacterDelimited(_ source: String, _ cursor: Cursor, _ delimiter: Char
         }
 
         value.append(char)
-        cursorCopy.location.column += 1
         cursorCopy.pointer += 1
+        cursorCopy.location.column += 1
     }
 
     return (nil, cursor, false)

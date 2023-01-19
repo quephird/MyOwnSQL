@@ -29,7 +29,7 @@ class LexerTests: XCTestCase {
         let location = Location(line: 0, column: 0)
         let cursor = Cursor(pointer: 0, location: location)
 
-        for testString in ["'", "", "foo", " 'foo'"] {
+        for testString in ["'", "", "foo", " 'foo'", "'foo     "] {
             let (actualToken, _, actualParsed) = lexString(testString, cursor)
             XCTAssertFalse(actualParsed)
             XCTAssertNil(actualToken)
