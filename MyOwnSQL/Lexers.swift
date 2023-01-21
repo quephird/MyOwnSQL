@@ -11,7 +11,7 @@ func lexNumeric(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
     var periodFound = false
     var expMarkerFound = false
 
-    for _ in cursorCopy.pointer..<source.count {
+    while cursorCopy.pointer < source.count {
         let pointerIndex = source.index(source.startIndex, offsetBy: cursorCopy.pointer)
         let char = source[pointerIndex]
         cursorCopy.location.column += 1
@@ -27,6 +27,7 @@ func lexNumeric(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
             }
 
             periodFound = isPeriod
+            cursorCopy.pointer += 1
             continue
         }
 
@@ -37,6 +38,7 @@ func lexNumeric(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
             }
 
             periodFound = true
+            cursorCopy.pointer += 1
             continue
         }
 
@@ -62,6 +64,7 @@ func lexNumeric(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
                 cursorCopy.location.column += 1
             }
 
+            cursorCopy.pointer += 1
             continue
         }
 
@@ -78,7 +81,7 @@ func lexNumeric(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
     }
 
     let startIndex = source.index(source.startIndex, offsetBy: cursor.pointer)
-    let endIndex = source.index(source.startIndex, offsetBy: cursorCopy.pointer)
+    let endIndex = source.index(source.startIndex, offsetBy: cursorCopy.pointer-1)
     let newTokenValue = source[startIndex...endIndex]
     let newToken = Token(value: String(newTokenValue), kind: .numeric, location: cursor.location)
     return (newToken, cursorCopy, true)

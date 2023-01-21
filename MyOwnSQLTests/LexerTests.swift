@@ -35,4 +35,24 @@ class LexerTests: XCTestCase {
             XCTAssertNil(actualToken)
         }
     }
+
+    func testSuccessfulNumericParses() throws {
+        let location = Location(line: 0, column: 0)
+        let cursor = Cursor(pointer: 0, location: location)
+
+        for (testNumeric, expectedTokenValue) in [
+            ("123", "123"),
+            (".123", ".123"),
+            ("0.123", "0.123"),
+            ("123.456", "123.456"),
+            ("1.23e4", "1.23e4"),
+            ("1.23e+4", "1.23e+4"),
+            ("1.23e-4", "1.23e-4"),
+        ] {
+            let (actualToken, _, actualParsed) = lexNumeric(testNumeric, cursor)
+            XCTAssertTrue(actualParsed)
+            XCTAssertEqual(actualToken!.value, expectedTokenValue)
+            XCTAssertEqual(actualToken!.kind, .numeric)
+        }
+    }
 }
