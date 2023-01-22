@@ -43,31 +43,32 @@ func lexNumeric(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
         }
 
         if isExpMarker {
-            // If we found another 'e', then return
-            if expMarkerFound {
-                return (nil, cursor, false)
-            }
+            expMarkerFound = true
 
             // No periods allowed after expMarker
             periodFound = true
-            expMarkerFound = true
 
-            // expMarker must be followed by digits
+            // expMarker must not be at the end of the string
             if cursorCopy.pointer == source.count-1 {
                 return (nil, cursor, false)
             }
 
             let nextPointerIndex = source.index(source.startIndex, offsetBy: cursorCopy.pointer+1)
             let nextChar = source[nextPointerIndex]
+            // Next character must either be a plus or minus...
             if nextChar == "-" || nextChar == "+" {
                 cursorCopy.pointer += 1
                 cursorCopy.location.column += 1
+            // ... or a digit
+            } else if nextChar < "0" || nextChar > "9" {
+                return (nil, cursor, false)
             }
 
             cursorCopy.pointer += 1
             continue
         }
 
+        // If we get here, then from here on out we expect only digits
         if !isDigit {
             break
         }
