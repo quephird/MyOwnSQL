@@ -11,7 +11,7 @@ func lexNumeric(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
     var periodFound = false
     var expMarkerFound = false
 
-    for _ in cursorCopy.pointer..<source.count {
+    while cursorCopy.pointer < source.count {
         let pointerIndex = source.index(source.startIndex, offsetBy: cursorCopy.pointer)
         let char = source[pointerIndex]
         cursorCopy.location.column += 1
@@ -27,6 +27,7 @@ func lexNumeric(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
             }
 
             periodFound = isPeriod
+            cursorCopy.pointer += 1
             continue
         }
 
@@ -37,34 +38,37 @@ func lexNumeric(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
             }
 
             periodFound = true
+            cursorCopy.pointer += 1
             continue
         }
 
         if isExpMarker {
-            // If we found another 'e', then return
-            if expMarkerFound {
-                return (nil, cursor, false)
-            }
+            expMarkerFound = true
 
             // No periods allowed after expMarker
             periodFound = true
-            expMarkerFound = true
 
-            // expMarker must be followed by digits
+            // expMarker must not be at the end of the string
             if cursorCopy.pointer == source.count-1 {
                 return (nil, cursor, false)
             }
 
             let nextPointerIndex = source.index(source.startIndex, offsetBy: cursorCopy.pointer+1)
             let nextChar = source[nextPointerIndex]
+            // Next character must either be a plus or minus...
             if nextChar == "-" || nextChar == "+" {
                 cursorCopy.pointer += 1
                 cursorCopy.location.column += 1
+            // ... or a digit
+            } else if nextChar < "0" || nextChar > "9" {
+                return (nil, cursor, false)
             }
 
+            cursorCopy.pointer += 1
             continue
         }
 
+        // If we get here, then from here on out we expect only digits
         if !isDigit {
             break
         }
@@ -78,7 +82,7 @@ func lexNumeric(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
     }
 
     let startIndex = source.index(source.startIndex, offsetBy: cursor.pointer)
-    let endIndex = source.index(source.startIndex, offsetBy: cursorCopy.pointer)
+    let endIndex = source.index(source.startIndex, offsetBy: cursorCopy.pointer-1)
     let newTokenValue = source[startIndex...endIndex]
     let newToken = Token(value: String(newTokenValue), kind: .numeric, location: cursor.location)
     return (newToken, cursorCopy, true)
