@@ -9,7 +9,6 @@ func lexNumeric(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
     var cursorCopy = cursor
 
     var periodFound = false
-    var expMarkerFound = false
 
 CHAR: while cursorCopy.pointer < source.endIndex {
         let char = source[cursorCopy.pointer]
@@ -30,8 +29,6 @@ CHAR: while cursorCopy.pointer < source.endIndex {
             if cursorCopy.pointer == cursor.pointer {
                 return (nil, cursor, false)
             }
-
-            expMarkerFound = true
 
             // No periods allowed after expMarker
             periodFound = true
