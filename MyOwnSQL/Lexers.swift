@@ -42,13 +42,15 @@ CHAR: while cursorCopy.pointer < source.endIndex {
             }
 
             let nextPointerIndex = source.index(after: cursorCopy.pointer)
-            let nextChar = source[nextPointerIndex]
+            switch source[nextPointerIndex] {
             // Next character must either be a plus or minus...
-            if nextChar == "-" || nextChar == "+" {
+            case "-", "+":
                 source.formIndex(after: &cursorCopy.pointer)
                 cursorCopy.location.column += 1
             // ... or a digit
-            } else if nextChar < "0" || nextChar > "9" {
+            case "0"..."9":
+                break
+            default:
                 return (nil, cursor, false)
             }
 
