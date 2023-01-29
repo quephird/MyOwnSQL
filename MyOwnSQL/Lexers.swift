@@ -9,71 +9,57 @@ func lexNumeric(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
     var cursorCopy = cursor
 
     var periodFound = false
-    var expMarkerFound = false
 
-    while cursorCopy.pointer < source.count {
-        let pointerIndex = source.index(source.startIndex, offsetBy: cursorCopy.pointer)
-        let char = source[pointerIndex]
+CHAR: while cursorCopy.pointer < source.endIndex {
+        let char = source[cursorCopy.pointer]
         cursorCopy.location.column += 1
 
-        let isDigit = char >= "0" && char <= "9"
-        let isPeriod = char == "."
-        let isExpMarker = char == "e"
+        switch char {
+        case "0"..."9":
+            break
 
-        // Must start with a digit or period
-        if cursorCopy.pointer == cursor.pointer {
-            if !isDigit && !isPeriod {
-                return (nil, cursor, false)
-            }
-
-            periodFound = isPeriod
-            cursorCopy.pointer += 1
-            continue
-        }
-
-        if isPeriod {
-            // If we found another period, then return
+        case ".":
             if periodFound {
                 return (nil, cursor, false)
             }
 
             periodFound = true
-            cursorCopy.pointer += 1
-            continue
-        }
 
-        if isExpMarker {
-            expMarkerFound = true
+        case "e":
+            if cursorCopy.pointer == cursor.pointer {
+                return (nil, cursor, false)
+            }
 
             // No periods allowed after expMarker
             periodFound = true
 
             // expMarker must not be at the end of the string
-            if cursorCopy.pointer == source.count-1 {
+            if cursorCopy.pointer == source.index(before: source.endIndex) {
                 return (nil, cursor, false)
             }
 
-            let nextPointerIndex = source.index(source.startIndex, offsetBy: cursorCopy.pointer+1)
-            let nextChar = source[nextPointerIndex]
+            let nextPointerIndex = source.index(after: cursorCopy.pointer)
+            switch source[nextPointerIndex] {
             // Next character must either be a plus or minus...
-            if nextChar == "-" || nextChar == "+" {
-                cursorCopy.pointer += 1
+            case "-", "+":
+                source.formIndex(after: &cursorCopy.pointer)
                 cursorCopy.location.column += 1
             // ... or a digit
-            } else if nextChar < "0" || nextChar > "9" {
+            case "0"..."9":
+                break
+            default:
                 return (nil, cursor, false)
             }
 
-            cursorCopy.pointer += 1
-            continue
+        default:
+            if cursorCopy.pointer == cursor.pointer {
+                return (nil, cursor, false)
+            }
+
+            break CHAR
         }
 
-        // If we get here, then from here on out we expect only digits
-        if !isDigit {
-            break
-        }
-
-        cursorCopy.pointer += 1
+        source.formIndex(after: &cursorCopy.pointer)
     }
 
     // If no characters accumulated, then return
@@ -81,9 +67,7 @@ func lexNumeric(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
         return (nil, cursor, false)
     }
 
-    let startIndex = source.index(source.startIndex, offsetBy: cursor.pointer)
-    let endIndex = source.index(source.startIndex, offsetBy: cursorCopy.pointer-1)
-    let newTokenValue = source[startIndex...endIndex]
+    let newTokenValue = source[cursor.pointer ..< cursorCopy.pointer]
     let newToken = Token(value: String(newTokenValue), kind: .numeric, location: cursor.location)
     return (newToken, cursorCopy, true)
 }
@@ -91,7 +75,7 @@ func lexNumeric(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
 func lexCharacterDelimited(_ source: String, _ cursor: Cursor, _ delimiter: Character) -> (Token?, Cursor, Bool) {
     var cursorCopy = cursor
 
-    let currentIndex = source.index(source.startIndex, offsetBy: cursorCopy.pointer)
+    let currentIndex = cursorCopy.pointer
     if source[currentIndex...].count == 0 {
         return (nil, cursor, false)
     }
@@ -101,28 +85,28 @@ func lexCharacterDelimited(_ source: String, _ cursor: Cursor, _ delimiter: Char
     }
 
     cursorCopy.location.column += 1
-    cursorCopy.pointer += 1
+    source.formIndex(after: &cursorCopy.pointer)
 
     var value: String = ""
-    while cursorCopy.pointer < source.count {
-        let pointerIndex = source.index(source.startIndex, offsetBy: cursorCopy.pointer)
+    while cursorCopy.pointer < source.endIndex {
+        let pointerIndex = cursorCopy.pointer
         let char = source[pointerIndex]
 
         if char == delimiter {
-            let nextPointerIndex = source.index(source.startIndex, offsetBy: cursorCopy.pointer+1)
+            let nextPointerIndex = source.index(after: cursorCopy.pointer)
 
-            if cursorCopy.pointer+1 >= source.count || source[nextPointerIndex] != delimiter {
+            if nextPointerIndex >= source.endIndex || source[nextPointerIndex] != delimiter {
                 let newToken = Token(value: value, kind: .string, location: cursor.location)
                 return (newToken, cursorCopy, true)
             } else {
                 value.append(delimiter)
-                cursorCopy.pointer += 1
+                source.formIndex(after: &cursorCopy.pointer)
                 cursorCopy.location.column += 1
             }
         }
 
         value.append(char)
-        cursorCopy.pointer += 1
+        source.formIndex(after: &cursorCopy.pointer)
         cursorCopy.location.column += 1
     }
 

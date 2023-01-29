@@ -50,7 +50,7 @@ struct Token {
 }
 
 struct Cursor {
-    var pointer: Int
+    var pointer: String.Index
     var location: Location
 }
 

@@ -10,7 +10,6 @@ import XCTest
 class LexerTests: XCTestCase {
     func testSuccessfulStringParses() throws {
         let location = Location(line: 0, column: 0)
-        let cursor = Cursor(pointer: 0, location: location)
 
         for (testString, expectedTokenValue) in [
             ("'foo'", "foo"),
@@ -18,6 +17,7 @@ class LexerTests: XCTestCase {
             ("'foo'   ", "foo"),
             ("'I''m working'", "I''m working"),
         ] {
+            let cursor = Cursor(pointer: testString.startIndex, location: location)
             let (actualToken, _, actualParsed) = lexString(testString, cursor)
             XCTAssertTrue(actualParsed)
             XCTAssertEqual(actualToken!.value, expectedTokenValue)
@@ -27,9 +27,10 @@ class LexerTests: XCTestCase {
 
     func testFailedStringParses() throws {
         let location = Location(line: 0, column: 0)
-        let cursor = Cursor(pointer: 0, location: location)
 
         for testString in ["'", "", "foo", " 'foo'", "'foo     "] {
+            let cursor = Cursor(pointer: testString.startIndex, location: location)
+
             let (actualToken, _, actualParsed) = lexString(testString, cursor)
             XCTAssertFalse(actualParsed)
             XCTAssertNil(actualToken)
@@ -38,7 +39,6 @@ class LexerTests: XCTestCase {
 
     func testSuccessfulNumericParses() throws {
         let location = Location(line: 0, column: 0)
-        let cursor = Cursor(pointer: 0, location: location)
 
         for (testNumeric, expectedTokenValue) in [
             ("123", "123"),
@@ -50,6 +50,8 @@ class LexerTests: XCTestCase {
             ("1.23e-4", "1.23e-4"),
             ("12345       ", "12345"),
         ] {
+            let cursor = Cursor(pointer: testNumeric.startIndex, location: location)
+
             let (actualToken, _, actualParsed) = lexNumeric(testNumeric, cursor)
             XCTAssertTrue(actualParsed)
             XCTAssertEqual(actualToken!.value, expectedTokenValue)
@@ -59,9 +61,10 @@ class LexerTests: XCTestCase {
 
     func testFailedNumericParses() throws {
         let location = Location(line: 0, column: 0)
-        let cursor = Cursor(pointer: 0, location: location)
 
         for testNumeric in ["'foo'", "1.23e", "123..456", "123ee456", "123ed456", "123e*4", "e123"] {
+            let cursor = Cursor(pointer: testNumeric.startIndex, location: location)
+
             let (actualToken, _, actualParsed) = lexNumeric(testNumeric, cursor)
             XCTAssertFalse(actualParsed)
             XCTAssertNil(actualToken)
