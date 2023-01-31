@@ -147,4 +147,33 @@ select * from bar;
             XCTAssertNil(actualToken)
         }
     }
+
+    func testSuccessfulIdentifierParses() throws {
+        let location = Location(line: 0, column: 0)
+
+        for (testSource, expectedTokenValue) in [
+            ("\"foo\"", "foo"),
+            ("foo", "foo"),
+            ("foo$bar_baz", "foo$bar_baz"),
+        ] {
+            let cursor = Cursor(pointer: testSource.startIndex, location: location)
+
+            let (actualToken, _, actualParsed) = lexIdentifier(testSource, cursor)
+            XCTAssertTrue(actualParsed)
+            XCTAssertEqual(actualToken!.value, expectedTokenValue)
+            XCTAssertEqual(actualToken!.kind, .identifier)
+        }
+    }
+
+    func testFailedIdentifierParses() throws {
+        let location = Location(line: 0, column: 0)
+
+        for testSource in ["\"", "'foo'", "1.23e456", "$foo", "9foo", "_foo"] {
+            let cursor = Cursor(pointer: testSource.startIndex, location: location)
+
+            let (actualToken, _, actualParsed) = lexIdentifier(testSource, cursor)
+            XCTAssertFalse(actualParsed)
+            XCTAssertNil(actualToken)
+        }
+    }
 }

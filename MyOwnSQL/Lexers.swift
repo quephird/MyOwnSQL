@@ -181,3 +181,41 @@ func lexKeyword(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
         return (nil, cursor, false)
     }
 }
+
+func lexIdentifier(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
+    switch lexCharacterDelimited(source, cursor, "\"") {
+    // Handle separately if is a double-quoted identifier
+    case (var token?, let newCursor, true):
+        // lexCharacterDelimited() currently returns a token with a string type,
+        // so we need to update it here.
+        token.kind = .identifier
+        return (token, newCursor, true)
+    default:
+        var cursorCopy = cursor
+
+        switch source[cursorCopy.pointer] {
+        case "A"..."Z", "a"..."z":
+            var value: String = ""
+            while cursorCopy.pointer < source.endIndex {
+                let char = source[cursorCopy.pointer]
+                switch char {
+                case "A"..."Z", "a"..."z", "0"..."9", "$", "_":
+                    value.append(char)
+                    source.formIndex(after: &cursorCopy.pointer)
+                    cursorCopy.location.column += 1
+                default:
+                    break
+                }
+            }
+
+            if value.count == 0 {
+                return (nil, cursor, false)
+            } else {
+                let newToken = Token(value: value, kind: .identifier, location: cursor.location)
+                return (newToken, cursorCopy, true)
+            }
+        default:
+            return (nil, cursor, false)
+        }
+    }
+}
