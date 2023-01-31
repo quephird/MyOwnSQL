@@ -11,14 +11,14 @@ class LexerTests: XCTestCase {
     func testSuccessfulStringParses() throws {
         let location = Location(line: 0, column: 0)
 
-        for (testString, expectedTokenValue) in [
+        for (testSource, expectedTokenValue) in [
             ("'foo'", "foo"),
             ("'foo bar'", "foo bar"),
             ("'foo'   ", "foo"),
             ("'I''m working'", "I''m working"),
         ] {
-            let cursor = Cursor(pointer: testString.startIndex, location: location)
-            let (actualToken, _, actualParsed) = lexString(testString, cursor)
+            let cursor = Cursor(pointer: testSource.startIndex, location: location)
+            let (actualToken, _, actualParsed) = lexString(testSource, cursor)
             XCTAssertTrue(actualParsed)
             XCTAssertEqual(actualToken!.value, expectedTokenValue)
             XCTAssertEqual(actualToken!.kind, .string)
@@ -28,10 +28,10 @@ class LexerTests: XCTestCase {
     func testFailedStringParses() throws {
         let location = Location(line: 0, column: 0)
 
-        for testString in ["'", "", "foo", " 'foo'", "'foo     "] {
-            let cursor = Cursor(pointer: testString.startIndex, location: location)
+        for testSource in ["'", "", "foo", " 'foo'", "'foo     "] {
+            let cursor = Cursor(pointer: testSource.startIndex, location: location)
 
-            let (actualToken, _, actualParsed) = lexString(testString, cursor)
+            let (actualToken, _, actualParsed) = lexString(testSource, cursor)
             XCTAssertFalse(actualParsed)
             XCTAssertNil(actualToken)
         }
@@ -40,7 +40,7 @@ class LexerTests: XCTestCase {
     func testSuccessfulNumericParses() throws {
         let location = Location(line: 0, column: 0)
 
-        for (testNumeric, expectedTokenValue) in [
+        for (testSource, expectedTokenValue) in [
             ("123", "123"),
             (".123", ".123"),
             ("0.123", "0.123"),
@@ -50,9 +50,9 @@ class LexerTests: XCTestCase {
             ("1.23e-4", "1.23e-4"),
             ("12345       ", "12345"),
         ] {
-            let cursor = Cursor(pointer: testNumeric.startIndex, location: location)
+            let cursor = Cursor(pointer: testSource.startIndex, location: location)
 
-            let (actualToken, _, actualParsed) = lexNumeric(testNumeric, cursor)
+            let (actualToken, _, actualParsed) = lexNumeric(testSource, cursor)
             XCTAssertTrue(actualParsed)
             XCTAssertEqual(actualToken!.value, expectedTokenValue)
             XCTAssertEqual(actualToken!.kind, .numeric)
@@ -62,10 +62,87 @@ class LexerTests: XCTestCase {
     func testFailedNumericParses() throws {
         let location = Location(line: 0, column: 0)
 
-        for testNumeric in ["'foo'", "1.23e", "123..456", "123ee456", "123ed456", "123e*4", "e123"] {
-            let cursor = Cursor(pointer: testNumeric.startIndex, location: location)
+        for testSource in ["'foo'", "1.23e", "123..456", "123ee456", "123ed456", "123e*4", "e123"] {
+            let cursor = Cursor(pointer: testSource.startIndex, location: location)
 
-            let (actualToken, _, actualParsed) = lexNumeric(testNumeric, cursor)
+            let (actualToken, _, actualParsed) = lexNumeric(testSource, cursor)
+            XCTAssertFalse(actualParsed)
+            XCTAssertNil(actualToken)
+        }
+    }
+
+    func testSuccessfulSpaceParse() throws {
+        let location = Location(line: 0, column: 3)
+        let testSource = "foo bar"
+        let pointer = testSource.index(testSource.startIndex, offsetBy: 3)
+        let cursor = Cursor(pointer: pointer, location: location)
+
+        let (actualToken, newCursor, actualParsed) = lexSymbol(testSource, cursor)
+        XCTAssertTrue(actualParsed)
+        XCTAssertNil(actualToken)
+        XCTAssertEqual(newCursor.location.line, 0)
+        XCTAssertEqual(newCursor.location.column, 4)
+    }
+
+    func testSuccessfulNewlineParse() throws {
+        let location = Location(line: 0, column: 18)
+
+        let testSource = """
+select * from foo;
+select * from bar;
+"""
+        let newlineIndex = testSource.index(testSource.startIndex, offsetBy: 18)
+        let cursor = Cursor(pointer: newlineIndex, location: location)
+
+        let (actualToken, newCursor, actualParsed) = lexSymbol(testSource, cursor)
+        XCTAssertTrue(actualParsed)
+        XCTAssertNil(actualToken)
+        XCTAssertEqual(newCursor.location.line, 1)
+        XCTAssertEqual(newCursor.location.column, 0)
+    }
+
+    func testSuccessfulSymbolicParses() throws {
+        let location = Location(line: 0, column: 0)
+
+        for (testSource, expectedTokenValue) in [
+            ("(", "("),
+            (")", ")"),
+            ("* ", "*"),
+        ] {
+            let cursor = Cursor(pointer: testSource.startIndex, location: location)
+
+            let (actualToken, _, actualParsed) = lexSymbol(testSource, cursor)
+            XCTAssertTrue(actualParsed)
+            XCTAssertEqual(actualToken!.value, expectedTokenValue)
+            XCTAssertEqual(actualToken!.kind, .symbol)
+        }
+    }
+
+    func testSuccessfulKeywordParses() throws {
+        let location = Location(line: 0, column: 0)
+
+        for (testSource, expectedTokenValue) in [
+            ("select ", "select"),
+            ("SELECT ", "select"),
+            ("from", "from"),
+        ] {
+            let cursor = Cursor(pointer: testSource.startIndex, location: location)
+
+            let (actualToken, newCursor, actualParsed) = lexKeyword(testSource, cursor)
+            XCTAssertTrue(actualParsed)
+            XCTAssertEqual(actualToken!.value, expectedTokenValue)
+            XCTAssertEqual(actualToken!.kind, .keyword)
+            XCTAssertEqual(newCursor.location.column, cursor.location.column + actualToken!.value.count)
+        }
+    }
+
+    func testFailedKeywordParses() throws {
+        let location = Location(line: 0, column: 0)
+
+        for testSource in ["'foo'", "1.23e456", " select", "non-existent"] {
+            let cursor = Cursor(pointer: testSource.startIndex, location: location)
+
+            let (actualToken, _, actualParsed) = lexKeyword(testSource, cursor)
             XCTAssertFalse(actualParsed)
             XCTAssertNil(actualToken)
         }

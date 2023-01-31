@@ -10,16 +10,15 @@ struct Location {
     var column: Int
 }
 
-enum Keyword: String {
+enum Keyword: String, CaseIterable {
     case select = "select"
-    case from = "from"
-    case `as` = "as"
+    case insert = "insert"
+    case values = "values"
     case table = "table"
     case create = "create"
-    case insert = "insert"
+    case `where` = "where"
+    case from = "from"
     case into = "into"
-    case values = "values"
-    case int = "int"
     case text = "text"
 }
 
