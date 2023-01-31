@@ -119,6 +119,7 @@ func lexString(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
 
 func longestMatch(_ source: String, _ cursor: Cursor, _ options: [String]) -> String? {
     return options.filter { option in
+        // TODO: Is this the best way to support case insensitivity?
         source[cursor.pointer ..< source.endIndex].hasPrefix(option)
     }.sorted(by: { (match1, match2) in
         match1.count > match2.count
@@ -141,7 +142,7 @@ func lexSymbol(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
         return (nil, cursorCopy, true)
     // Syntax that should be kept
     default:
-        let symbols: [String] = [
+        let allSymbols: [String] = [
             Symbol.semicolon,
             Symbol.asterisk,
             Symbol.comma,
@@ -151,7 +152,7 @@ func lexSymbol(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
             symbol.rawValue
         }
 
-        if let match = longestMatch(source, cursor, symbols) {
+        if let match = longestMatch(source, cursor, allSymbols) {
             source.formIndex(&cursorCopy.pointer, offsetBy: match.count)
             cursorCopy.location.column += match.count
 
@@ -160,5 +161,23 @@ func lexSymbol(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
         } else {
             return (nil, cursor, false)
         }
+    }
+}
+
+func lexKeyword(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
+    var cursorCopy = cursor
+
+    let allKeywords = Keyword.allCases.map { keyword in
+        keyword.rawValue
+    }
+
+    if let match = longestMatch(source.lowercased(), cursor, allKeywords) {
+        source.formIndex(&cursorCopy.pointer, offsetBy: match.count)
+        cursorCopy.location.column += match.count
+
+        let newToken = Token(value: match, kind: .keyword, location: cursor.location)
+        return (newToken, cursorCopy, true)
+    } else {
+        return (nil, cursor, false)
     }
 }

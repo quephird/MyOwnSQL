@@ -117,4 +117,34 @@ select * from bar;
             XCTAssertEqual(actualToken!.kind, .symbol)
         }
     }
+
+    func testSuccessfulKeywordParses() throws {
+        let location = Location(line: 0, column: 0)
+
+        for (testSource, expectedTokenValue) in [
+            ("select ", "select"),
+            ("SELECT ", "select"),
+            ("from", "from"),
+        ] {
+            let cursor = Cursor(pointer: testSource.startIndex, location: location)
+
+            let (actualToken, newCursor, actualParsed) = lexKeyword(testSource, cursor)
+            XCTAssertTrue(actualParsed)
+            XCTAssertEqual(actualToken!.value, expectedTokenValue)
+            XCTAssertEqual(actualToken!.kind, .keyword)
+            XCTAssertEqual(newCursor.location.column, cursor.location.column + actualToken!.value.count)
+        }
+    }
+
+    func testFailedKeywordParses() throws {
+        let location = Location(line: 0, column: 0)
+
+        for testSource in ["'foo'", "1.23e456", " select", "non-existent"] {
+            let cursor = Cursor(pointer: testSource.startIndex, location: location)
+
+            let (actualToken, _, actualParsed) = lexKeyword(testSource, cursor)
+            XCTAssertFalse(actualParsed)
+            XCTAssertNil(actualToken)
+        }
+    }
 }
