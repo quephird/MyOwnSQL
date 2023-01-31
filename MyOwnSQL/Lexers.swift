@@ -117,3 +117,48 @@ func lexString(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
     return lexCharacterDelimited(source, cursor, "\'")
 }
 
+func longestMatch(_ source: String, _ cursor: Cursor, _ options: [String]) -> String? {
+    return options.filter { option in
+        source[cursor.pointer ..< source.endIndex].hasPrefix(option)
+    }.sorted(by: { (match1, match2) in
+        match1.count > match2.count
+    }).first
+}
+
+func lexSymbol(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
+    var cursorCopy = cursor
+
+    switch source[cursor.pointer] {
+    // Syntax that should be thrown away
+    case "\n":
+        source.formIndex(after: &cursorCopy.pointer)
+        cursorCopy.location.line += 1
+        cursorCopy.location.column = 0
+        return (nil, cursorCopy, true)
+    case "\t", " ":
+        source.formIndex(after: &cursorCopy.pointer)
+        cursorCopy.location.column += 1
+        return (nil, cursorCopy, true)
+    // Syntax that should be kept
+    default:
+        let symbols: [String] = [
+            Symbol.semicolon,
+            Symbol.asterisk,
+            Symbol.comma,
+            Symbol.leftParenthesis,
+            Symbol.rightParenthesis,
+        ].map { symbol in
+            symbol.rawValue
+        }
+
+        if let match = longestMatch(source, cursor, symbols) {
+            source.formIndex(&cursorCopy.pointer, offsetBy: match.count)
+            cursorCopy.location.column += match.count
+
+            let newToken = Token(value: match, kind: .symbol, location: cursor.location)
+            return (newToken, cursorCopy, true)
+        } else {
+            return (nil, cursor, false)
+        }
+    }
+}
