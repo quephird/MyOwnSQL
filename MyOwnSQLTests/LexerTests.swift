@@ -155,6 +155,7 @@ select * from bar;
             ("\"foo\"", "foo"),
             ("foo", "foo"),
             ("foo$bar_baz", "foo$bar_baz"),
+            ("foo;", "foo"),
         ] {
             let cursor = Cursor(pointer: testSource.startIndex, location: location)
 
@@ -175,5 +176,27 @@ select * from bar;
             XCTAssertFalse(actualParsed)
             XCTAssertNil(actualToken)
         }
+    }
+
+    func testSuccessfulLex() throws {
+        let source = """
+SELECT 'x' FROM foo
+WHERE bar = 42;
+"""
+        let (actualTokens, actualErrorMessage) = lex(source)
+
+        let expectedTokens = [
+            Token(value: "select", kind: .keyword, location: Location(line: 0, column: 0)),
+            Token(value: "x", kind: .string, location: Location(line: 0, column: 7)),
+            Token(value: "from", kind: .keyword, location: Location(line: 0, column: 11)),
+            Token(value: "foo", kind: .identifier, location: Location(line: 0, column: 16)),
+            Token(value: "where", kind: .keyword, location: Location(line: 1, column: 0)),
+            Token(value: "bar", kind: .identifier, location: Location(line: 1, column: 6)),
+            Token(value: "=", kind: .symbol, location: Location(line: 1, column: 10)),
+            Token(value: "42", kind: .numeric, location: Location(line: 1, column: 12)),
+            Token(value: ";", kind: .symbol, location: Location(line: 1, column: 14)),
+        ]
+        XCTAssertEqual(actualTokens!, expectedTokens)
+        XCTAssertNil(actualErrorMessage)
     }
 }
