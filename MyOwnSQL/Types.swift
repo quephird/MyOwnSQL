@@ -5,7 +5,7 @@
 //  Created by Danielle Kefford on 1/5/23.
 //
 
-struct Location {
+struct Location: Equatable {
     var line: Int
     var column: Int
 }
@@ -22,12 +22,13 @@ enum Keyword: String, CaseIterable {
     case text = "text"
 }
 
-enum Symbol: String {
+enum Symbol: String, CaseIterable {
     case semicolon = ";"
     case asterisk = "*"
     case comma = ","
     case leftParenthesis = "("
     case rightParenthesis = ")"
+    case equals = "="
 }
 
 enum TokenKind {
@@ -38,14 +39,10 @@ enum TokenKind {
     case numeric
 }
 
-struct Token {
+struct Token: Equatable {
     var value: String
     var kind: TokenKind
     var location: Location
-
-    func equals(_ other: Token) -> Bool {
-        return self.value == other.value && self.kind == other.kind
-    }
 }
 
 struct Cursor {

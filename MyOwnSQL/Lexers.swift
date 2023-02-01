@@ -12,7 +12,6 @@ func lexNumeric(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
 
 CHAR: while cursorCopy.pointer < source.endIndex {
         let char = source[cursorCopy.pointer]
-        cursorCopy.location.column += 1
 
         switch char {
         case "0"..."9":
@@ -59,6 +58,7 @@ CHAR: while cursorCopy.pointer < source.endIndex {
             break CHAR
         }
 
+        cursorCopy.location.column += 1
         source.formIndex(after: &cursorCopy.pointer)
     }
 
@@ -96,6 +96,8 @@ func lexCharacterDelimited(_ source: String, _ cursor: Cursor, _ delimiter: Char
             let nextPointerIndex = source.index(after: cursorCopy.pointer)
 
             if nextPointerIndex >= source.endIndex || source[nextPointerIndex] != delimiter {
+                source.formIndex(after: &cursorCopy.pointer)
+                cursorCopy.location.column += 1
                 let newToken = Token(value: value, kind: .string, location: cursor.location)
                 return (newToken, cursorCopy, true)
             } else {
@@ -142,13 +144,7 @@ func lexSymbol(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
         return (nil, cursorCopy, true)
     // Syntax that should be kept
     default:
-        let allSymbols: [String] = [
-            Symbol.semicolon,
-            Symbol.asterisk,
-            Symbol.comma,
-            Symbol.leftParenthesis,
-            Symbol.rightParenthesis,
-        ].map { symbol in
+        let allSymbols = Symbol.allCases.map { symbol in
             symbol.rawValue
         }
 
@@ -196,7 +192,7 @@ func lexIdentifier(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool)
         switch source[cursorCopy.pointer] {
         case "A"..."Z", "a"..."z":
             var value: String = ""
-            while cursorCopy.pointer < source.endIndex {
+LEX:        while cursorCopy.pointer < source.endIndex {
                 let char = source[cursorCopy.pointer]
                 switch char {
                 case "A"..."Z", "a"..."z", "0"..."9", "$", "_":
@@ -204,7 +200,7 @@ func lexIdentifier(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool)
                     source.formIndex(after: &cursorCopy.pointer)
                     cursorCopy.location.column += 1
                 default:
-                    break
+                    break LEX
                 }
             }
 
@@ -218,4 +214,37 @@ func lexIdentifier(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool)
             return (nil, cursor, false)
         }
     }
+}
+
+func lex(_ source: String) -> ([Token]?, String?) {
+    var tokens: [Token] = []
+    let location = Location(line: 0, column: 0)
+    var cursor = Cursor(pointer: source.startIndex, location: location)
+
+LEX:
+    while cursor.pointer < source.endIndex {
+        let lexers = [lexKeyword, lexSymbol, lexString, lexNumeric, lexIdentifier]
+        for lexer in lexers {
+            let (maybeToken, newCursor, parsed) = lexer(source, cursor)
+            if parsed {
+                cursor = newCursor
+
+                if let token = maybeToken {
+                    tokens.append(token)
+                }
+
+                continue LEX
+            }
+        }
+
+        var hint = ""
+        if tokens.count > 0 {
+            hint = " after " + tokens[tokens.count-1].value
+        }
+
+        let errorMessage = "Unable to lex token\(hint), at line \(cursor.location.line), column \(cursor.location.column)"
+        return (nil, errorMessage)
+    }
+
+    return (tokens, nil)
 }
