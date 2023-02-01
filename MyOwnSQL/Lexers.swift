@@ -96,6 +96,8 @@ func lexCharacterDelimited(_ source: String, _ cursor: Cursor, _ delimiter: Char
             let nextPointerIndex = source.index(after: cursorCopy.pointer)
 
             if nextPointerIndex >= source.endIndex || source[nextPointerIndex] != delimiter {
+                source.formIndex(after: &cursorCopy.pointer)
+                cursorCopy.location.column += 1
                 let newToken = Token(value: value, kind: .string, location: cursor.location)
                 return (newToken, cursorCopy, true)
             } else {
