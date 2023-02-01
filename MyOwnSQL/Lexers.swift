@@ -12,7 +12,6 @@ func lexNumeric(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
 
 CHAR: while cursorCopy.pointer < source.endIndex {
         let char = source[cursorCopy.pointer]
-        cursorCopy.location.column += 1
 
         switch char {
         case "0"..."9":
@@ -59,6 +58,7 @@ CHAR: while cursorCopy.pointer < source.endIndex {
             break CHAR
         }
 
+        cursorCopy.location.column += 1
         source.formIndex(after: &cursorCopy.pointer)
     }
 
