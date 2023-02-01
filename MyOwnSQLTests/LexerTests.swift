@@ -199,4 +199,12 @@ WHERE bar = 42;
         XCTAssertEqual(actualTokens!, expectedTokens)
         XCTAssertNil(actualErrorMessage)
     }
+
+    func testFailedLex() throws {
+        let source = "SELECT 'foo FROM bar;"
+        let (actualTokens, actualErrorMessage) = lex(source)
+        XCTAssertNil(actualTokens)
+        let expectedErrorMessage = "Unable to lex token after select, at line 0, column 7"
+        XCTAssertEqual(actualErrorMessage!, expectedErrorMessage)
+    }
 }
