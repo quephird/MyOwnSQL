@@ -1,5 +1,5 @@
 //
-//  Types.swift
+//  LexerTypes.swift
 //  MyOwnSQL
 //
 //  Created by Danielle Kefford on 1/5/23.

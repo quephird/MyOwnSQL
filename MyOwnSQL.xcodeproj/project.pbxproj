@@ -8,11 +8,11 @@
 
 /* Begin PBXBuildFile section */
 		8728DA1E296772E500AB66A6 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8728DA1D296772E500AB66A6 /* main.swift */; };
-		8728DA252967734200AB66A6 /* Types.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8728DA242967734200AB66A6 /* Types.swift */; };
+		8728DA252967734200AB66A6 /* LexerTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8728DA242967734200AB66A6 /* LexerTypes.swift */; };
 		8728DA272967817D00AB66A6 /* Lexers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8728DA262967817D00AB66A6 /* Lexers.swift */; };
 		8728DA2F2968D8BA00AB66A6 /* LexerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8728DA2E2968D8BA00AB66A6 /* LexerTests.swift */; };
 		8728DA332968D99200AB66A6 /* Lexers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8728DA262967817D00AB66A6 /* Lexers.swift */; };
-		8728DA342968D99600AB66A6 /* Types.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8728DA242967734200AB66A6 /* Types.swift */; };
+		8728DA342968D99600AB66A6 /* LexerTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8728DA242967734200AB66A6 /* LexerTypes.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -30,7 +30,7 @@
 /* Begin PBXFileReference section */
 		8728DA1A296772E500AB66A6 /* MyOwnSQL */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = MyOwnSQL; sourceTree = BUILT_PRODUCTS_DIR; };
 		8728DA1D296772E500AB66A6 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
-		8728DA242967734200AB66A6 /* Types.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Types.swift; sourceTree = "<group>"; };
+		8728DA242967734200AB66A6 /* LexerTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LexerTypes.swift; sourceTree = "<group>"; };
 		8728DA262967817D00AB66A6 /* Lexers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Lexers.swift; sourceTree = "<group>"; };
 		8728DA2C2968D8BA00AB66A6 /* MyOwnSQLTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MyOwnSQLTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8728DA2E2968D8BA00AB66A6 /* LexerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LexerTests.swift; sourceTree = "<group>"; };
@@ -76,7 +76,7 @@
 			isa = PBXGroup;
 			children = (
 				8728DA1D296772E500AB66A6 /* main.swift */,
-				8728DA242967734200AB66A6 /* Types.swift */,
+				8728DA242967734200AB66A6 /* LexerTypes.swift */,
 				8728DA262967817D00AB66A6 /* Lexers.swift */,
 			);
 			path = MyOwnSQL;
@@ -181,7 +181,7 @@
 			files = (
 				8728DA272967817D00AB66A6 /* Lexers.swift in Sources */,
 				8728DA1E296772E500AB66A6 /* main.swift in Sources */,
-				8728DA252967734200AB66A6 /* Types.swift in Sources */,
+				8728DA252967734200AB66A6 /* LexerTypes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -189,7 +189,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				8728DA342968D99600AB66A6 /* Types.swift in Sources */,
+				8728DA342968D99600AB66A6 /* LexerTypes.swift in Sources */,
 				8728DA332968D99200AB66A6 /* Lexers.swift in Sources */,
 				8728DA2F2968D8BA00AB66A6 /* LexerTests.swift in Sources */,
 			);
