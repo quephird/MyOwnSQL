@@ -13,6 +13,8 @@
 		8728DA2F2968D8BA00AB66A6 /* LexerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8728DA2E2968D8BA00AB66A6 /* LexerTests.swift */; };
 		8728DA332968D99200AB66A6 /* Lexers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8728DA262967817D00AB66A6 /* Lexers.swift */; };
 		8728DA342968D99600AB66A6 /* LexerTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8728DA242967734200AB66A6 /* LexerTypes.swift */; };
+		87F0A613298B04380086F9D2 /* ASTTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87F0A612298B04380086F9D2 /* ASTTypes.swift */; };
+		87F0A616298DD3050086F9D2 /* Parsers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87F0A615298DD3050086F9D2 /* Parsers.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -34,6 +36,8 @@
 		8728DA262967817D00AB66A6 /* Lexers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Lexers.swift; sourceTree = "<group>"; };
 		8728DA2C2968D8BA00AB66A6 /* MyOwnSQLTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MyOwnSQLTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8728DA2E2968D8BA00AB66A6 /* LexerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LexerTests.swift; sourceTree = "<group>"; };
+		87F0A612298B04380086F9D2 /* ASTTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ASTTypes.swift; sourceTree = "<group>"; };
+		87F0A615298DD3050086F9D2 /* Parsers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Parsers.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -78,6 +82,8 @@
 				8728DA1D296772E500AB66A6 /* main.swift */,
 				8728DA242967734200AB66A6 /* LexerTypes.swift */,
 				8728DA262967817D00AB66A6 /* Lexers.swift */,
+				87F0A612298B04380086F9D2 /* ASTTypes.swift */,
+				87F0A615298DD3050086F9D2 /* Parsers.swift */,
 			);
 			path = MyOwnSQL;
 			sourceTree = "<group>";
@@ -181,6 +187,8 @@
 			files = (
 				8728DA272967817D00AB66A6 /* Lexers.swift in Sources */,
 				8728DA1E296772E500AB66A6 /* main.swift in Sources */,
+				87F0A613298B04380086F9D2 /* ASTTypes.swift in Sources */,
+				87F0A616298DD3050086F9D2 /* Parsers.swift in Sources */,
 				8728DA252967734200AB66A6 /* LexerTypes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

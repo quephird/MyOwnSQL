@@ -31,16 +31,30 @@ enum Symbol: String, CaseIterable {
     case equals = "="
 }
 
-enum TokenKind {
-    case keyword
-    case symbol
-    case identifier
-    case string
-    case numeric
+enum TokenKind: Hashable, CustomStringConvertible {
+    case keyword(Keyword)
+    case symbol(Symbol)
+    case identifier(String)
+    case string(String)
+    case numeric(String)
+
+    var description: String {
+        switch self {
+        case .keyword(let keyword):
+            return keyword.rawValue
+        case .symbol(let symbol):
+            return symbol.rawValue
+        case .identifier(let identifier):
+            return "\"" + identifier + "\""
+        case .string(let string):
+            return "\'" + string + "\'"
+        case .numeric(let numeric):
+            return numeric
+        }
+    }
 }
 
 struct Token: Equatable {
-    var value: String
     var kind: TokenKind
     var location: Location
 }
@@ -49,5 +63,3 @@ struct Cursor {
     var pointer: String.Index
     var location: Location
 }
-
-typealias Lexer = (String, Cursor) -> (Token?, Cursor, Bool)
