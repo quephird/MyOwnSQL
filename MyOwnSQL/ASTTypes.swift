@@ -5,12 +5,10 @@
 //  Created by Danielle Kefford on 2/1/23.
 //
 
-protocol Expression {
+enum Expression: Equatable {
+    case literal(Token)
 }
 
-struct LiteralExpression: Expression {
-    var literal: Token
-}
 
 struct ColumnDefinition {
     var name: Token
@@ -25,7 +23,7 @@ struct CreateStatement: Statement {
     var columns: [ColumnDefinition]
 }
 
-struct SelectStatement: Statement {
+struct SelectStatement: Statement, Equatable {
     var table: Token
     var items: [Expression]
 

@@ -14,7 +14,7 @@ func parseExpressions(_ tokens: [Token], _ tokenCursor: Int) -> ([Expression]?, 
 
         switch maybeLiteralToken.kind {
         case .identifier, .string, .numeric:
-            let expression = LiteralExpression(literal: maybeLiteralToken)
+            let expression = Expression.literal(maybeLiteralToken)
             expressions.append(expression)
         default:
             return (nil, tokenCursor, false)
@@ -52,7 +52,7 @@ func parseExpressions(_ tokens: [Token], _ tokenCursor: Int) -> ([Expression]?, 
     return (expressions, tokenCursorCopy, true)
 }
 
-func parseSelectStatement(_ tokens: [Token], tokenCursor: Int, _ delimiter: Token) -> (SelectStatement?, Int, Bool) {
+func parseSelectStatement(_ tokens: [Token], _ tokenCursor: Int) -> (SelectStatement?, Int, Bool) {
     var tokenCursorCopy = tokenCursor
 
     // If current token is the `select` one, then increment token cursor and proceed.
@@ -76,7 +76,6 @@ func parseSelectStatement(_ tokens: [Token], tokenCursor: Int, _ delimiter: Toke
 
     // If current token is the target table, then increment token cursor and proceed.
     guard case .identifier = tokens[tokenCursorCopy].kind else {
-//    if tokens[tokenCursorCopy].kind != .identifier {
         return (nil, tokenCursor, false)
     }
     let table = tokens[tokenCursorCopy]

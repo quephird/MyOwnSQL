@@ -15,6 +15,9 @@
 		8728DA342968D99600AB66A6 /* LexerTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8728DA242967734200AB66A6 /* LexerTypes.swift */; };
 		87F0A613298B04380086F9D2 /* ASTTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87F0A612298B04380086F9D2 /* ASTTypes.swift */; };
 		87F0A616298DD3050086F9D2 /* Parsers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87F0A615298DD3050086F9D2 /* Parsers.swift */; };
+		87F0A61829905C500086F9D2 /* ParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87F0A61729905C500086F9D2 /* ParserTests.swift */; };
+		87F0A61929905E1F0086F9D2 /* Parsers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87F0A615298DD3050086F9D2 /* Parsers.swift */; };
+		87F0A61A29905E410086F9D2 /* ASTTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87F0A612298B04380086F9D2 /* ASTTypes.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -38,6 +41,7 @@
 		8728DA2E2968D8BA00AB66A6 /* LexerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LexerTests.swift; sourceTree = "<group>"; };
 		87F0A612298B04380086F9D2 /* ASTTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ASTTypes.swift; sourceTree = "<group>"; };
 		87F0A615298DD3050086F9D2 /* Parsers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Parsers.swift; sourceTree = "<group>"; };
+		87F0A61729905C500086F9D2 /* ParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParserTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -92,6 +96,7 @@
 			isa = PBXGroup;
 			children = (
 				8728DA2E2968D8BA00AB66A6 /* LexerTests.swift */,
+				87F0A61729905C500086F9D2 /* ParserTests.swift */,
 			);
 			path = MyOwnSQLTests;
 			sourceTree = "<group>";
@@ -197,8 +202,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				87F0A61829905C500086F9D2 /* ParserTests.swift in Sources */,
 				8728DA342968D99600AB66A6 /* LexerTypes.swift in Sources */,
 				8728DA332968D99200AB66A6 /* Lexers.swift in Sources */,
+				87F0A61929905E1F0086F9D2 /* Parsers.swift in Sources */,
+				87F0A61A29905E410086F9D2 /* ASTTypes.swift in Sources */,
 				8728DA2F2968D8BA00AB66A6 /* LexerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
