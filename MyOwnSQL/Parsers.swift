@@ -5,6 +5,11 @@
 //  Created by Danielle Kefford on 2/3/23.
 //
 
+// We expect each item in the list of expressions to be in the form:
+//
+//     <column name> or <numeric value> or <string value>
+//
+// ... and to be delimited by a comma
 func parseExpressions(_ tokens: [Token], _ tokenCursor: Int) -> ([Expression]?, Int, Bool) {
     var tokenCursorCopy = tokenCursor
     var expressions: [Expression] = []
@@ -29,29 +34,14 @@ func parseExpressions(_ tokens: [Token], _ tokenCursor: Int) -> ([Expression]?, 
         } else {
             break
         }
-
-    // loop through tokens starting at current cursor
-    //     get current token
-    //     if it's one of identifier, string, or numeric, then
-    //         create new literal expression for token
-    //         add it to expressions
-    //     else
-    //         return (nil, tokenCursor, false)
-    //     end if
-    //     increment cursor
-    //
-    //     get current token
-    //     if it's a comma, then
-    //         increment cursor and continue
-    //     else
-    //         break loop
-    //     end if
-    // end loop
     }
 
     return (expressions, tokenCursorCopy, true)
 }
 
+// For now, the structure of a supported select statement is the following:
+//
+//     SELECT <one or more expressions> FROM <table name>
 func parseSelectStatement(_ tokens: [Token], _ tokenCursor: Int) -> (SelectStatement?, Int, Bool) {
     var tokenCursorCopy = tokenCursor
 
@@ -83,5 +73,91 @@ func parseSelectStatement(_ tokens: [Token], _ tokenCursor: Int) -> (SelectState
 
     // Create new SelectStatement
     let statement = SelectStatement(table, expressions!)
+    return (statement, tokenCursorCopy, true)
+}
+
+// We expect each item in the list of column definitions to be in the form:
+//
+//     <column name> <column type>
+//
+// ... and to be delimited by a comma
+func parseColumns(_ tokens: [Token], _ tokenCursor: Int) -> ([Definition]?, Int, Bool) {
+    var tokenCursorCopy = tokenCursor
+    var columns: [Definition] = []
+
+    while tokenCursorCopy < tokens.count {
+        guard case .identifier = tokens[tokenCursorCopy].kind else {
+            return (nil, tokenCursor, false)
+        }
+        let name = tokens[tokenCursorCopy]
+        tokenCursorCopy += 1
+
+        let maybeDatatype = tokens[tokenCursorCopy]
+        guard case .keyword(let keyword) = maybeDatatype.kind,
+              [Keyword.int, Keyword.text, Keyword.boolean].contains(keyword) else {
+            return (nil, tokenCursor, false)
+        }
+        let column = Definition.column(name, maybeDatatype)
+        columns.append(column)
+        tokenCursorCopy += 1
+
+        let maybeCommaToken = tokens[tokenCursorCopy]
+        if maybeCommaToken.kind == TokenKind.symbol(.comma) {
+            tokenCursorCopy += 1
+        } else {
+            break
+        }
+    }
+
+    // TODO: Need to check count of column definitions
+    return (columns, tokenCursorCopy, true)
+}
+
+// For now, the structure of a supported create statement is the following:
+//
+//     CREATE TABLE <table name> <one or more column definitions>
+func parseCreateStatement(_ tokens: [Token], _ tokenCursor: Int) -> (CreateStatement?, Int, Bool) {
+    var tokenCursorCopy = tokenCursor
+
+    // If current token is the `create` one, then increment token cursor and proceed.
+    if tokens[tokenCursorCopy].kind != TokenKind.keyword(.create) {
+        return (nil, tokenCursor, false)
+    }
+    tokenCursorCopy += 1
+
+    // If current token is the `table` one, then increment token cursor and proceed.
+    if tokens[tokenCursorCopy].kind != TokenKind.keyword(.table) {
+        return (nil, tokenCursor, false)
+    }
+    tokenCursorCopy += 1
+
+    // If current token is the target table name, then increment token cursor and proceed.
+    guard case .identifier = tokens[tokenCursorCopy].kind else {
+        return (nil, tokenCursor, false)
+    }
+    let table = tokens[tokenCursorCopy]
+    tokenCursorCopy += 1
+
+    // If current token is a left paren, then increment token cursor and proceed.
+    if tokens[tokenCursorCopy].kind != TokenKind.symbol(.leftParenthesis) {
+        return (nil, tokenCursor, false)
+    }
+    tokenCursorCopy += 1
+
+    // Parse column definitions next
+    let (columns, newTokenCursor, parsed) = parseColumns(tokens, tokenCursorCopy)
+    if !parsed {
+        return (nil, tokenCursor, false)
+    }
+    tokenCursorCopy = newTokenCursor
+
+
+    // If current token is a _right_ paren, then increment token cursor and proceed.
+    if tokens[tokenCursorCopy].kind != TokenKind.symbol(.rightParenthesis) {
+        return (nil, tokenCursor, false)
+    }
+    tokenCursorCopy += 1
+
+    let statement = CreateStatement(table, columns!)
     return (statement, tokenCursorCopy, true)
 }

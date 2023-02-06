@@ -20,6 +20,8 @@ enum Keyword: String, CaseIterable {
     case from = "from"
     case into = "into"
     case text = "text"
+    case int = "int"
+    case boolean = "boolean"
 }
 
 enum Symbol: String, CaseIterable {

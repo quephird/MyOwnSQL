@@ -9,18 +9,21 @@ enum Expression: Equatable {
     case literal(Token)
 }
 
-
-struct ColumnDefinition {
-    var name: Token
-    var datatype: Token
+enum Definition: Equatable {
+    case column(Token, Token)
 }
 
 protocol Statement {
 }
 
-struct CreateStatement: Statement {
+struct CreateStatement: Statement, Equatable {
     var table: Token
-    var columns: [ColumnDefinition]
+    var columns: [Definition]
+
+    init(_ table: Token, _ columns: [Definition]) {
+        self.table = table
+        self.columns = columns
+    }
 }
 
 struct SelectStatement: Statement, Equatable {
