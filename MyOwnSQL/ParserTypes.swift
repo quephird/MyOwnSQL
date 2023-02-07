@@ -45,7 +45,3 @@ struct InsertStatement: Statement, Equatable {
         self.items = items
     }
 }
-
-struct AST {
-    var statements: [Statement]
-}
