@@ -132,6 +132,22 @@ select * from bar;
         }
     }
 
+    func testSuccessfulBooleanParses() throws {
+        let location = Location(line: 0, column: 0)
+
+        for (testSource, expectedTokenValue) in [
+            ("true ", "true"),
+            ("false ", "false"),
+        ] {
+            let cursor = Cursor(pointer: testSource.startIndex, location: location)
+
+            let (actualToken, newCursor, actualParsed) = lexKeyword(testSource, cursor)
+            XCTAssertTrue(actualParsed)
+            XCTAssertEqual(actualToken!.kind, .boolean(expectedTokenValue))
+            XCTAssertEqual(newCursor.location.column, cursor.location.column + actualToken!.kind.description.count)
+        }
+    }
+
     func testFailedKeywordParses() throws {
         let location = Location(line: 0, column: 0)
 

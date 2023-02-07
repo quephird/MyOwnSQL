@@ -22,6 +22,8 @@ enum Keyword: String, CaseIterable {
     case text = "text"
     case int = "int"
     case boolean = "boolean"
+    case `true` = "true"
+    case `false` = "false"
 }
 
 enum Symbol: String, CaseIterable {
@@ -39,6 +41,7 @@ enum TokenKind: Hashable, CustomStringConvertible {
     case identifier(String)
     case string(String)
     case numeric(String)
+    case boolean(String)
 
     var description: String {
         switch self {
@@ -52,6 +55,8 @@ enum TokenKind: Hashable, CustomStringConvertible {
             return "\'" + string + "\'"
         case .numeric(let numeric):
             return numeric
+        case .boolean(let boolean):
+            return boolean
         }
     }
 }

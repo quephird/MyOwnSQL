@@ -9,15 +9,16 @@ import XCTest
 
 class ParserTests: XCTestCase {
     func testSuccessfulParseOfSelectStatement() throws {
-        let source = "SELECT 42, 'x', foo FROM bar"
+        let source = "SELECT 42, 'x', true, foo FROM bar"
         let (actualTokens, _) = lex(source)
         let (maybeStatement, _, _) = parseSelectStatement(actualTokens!, 0)
         let expectedStatement = SelectStatement(
-            Token(kind: .identifier("bar"), location: Location(line: 0, column: 25)),
+            Token(kind: .identifier("bar"), location: Location(line: 0, column: 31)),
             [
                 .literal(Token(kind: .numeric("42"), location: Location(line: 0, column: 7))),
                 .literal(Token(kind: .string("x"), location: Location(line: 0, column: 11))),
-                .literal(Token(kind: .identifier("foo"), location: Location(line: 0, column: 16))),
+                .literal(Token(kind: .boolean("true"), location: Location(line: 0, column: 16))),
+                .literal(Token(kind: .identifier("foo"), location: Location(line: 0, column: 22))),
             ]
         )
         XCTAssertEqual(maybeStatement!, expectedStatement)
@@ -42,7 +43,7 @@ class ParserTests: XCTestCase {
     }
 
     func testSuccessfulParseOfInsertStatement() throws {
-        let source = "INSERT INTO foo VALUES (42, 'x')"
+        let source = "INSERT INTO foo VALUES (42, 'x', false)"
         let (actualTokens, _) = lex(source)
         let (maybeStatement, _, _) = parseInsertStatement(actualTokens!, 0)
         let expectedStatement = InsertStatement(
@@ -50,6 +51,7 @@ class ParserTests: XCTestCase {
             [
                 .literal(Token(kind: .numeric("42"), location: Location(line: 0, column: 24))),
                 .literal(Token(kind: .string("x"), location: Location(line: 0, column: 28))),
+                .literal(Token(kind: .boolean("false"), location: Location(line: 0, column: 33))),
             ]
         )
         XCTAssertEqual(maybeStatement!, expectedStatement)

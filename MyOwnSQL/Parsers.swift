@@ -18,7 +18,7 @@ func parseExpressions(_ tokens: [Token], _ tokenCursor: Int) -> ([Expression]?, 
         let maybeLiteralToken = tokens[tokenCursorCopy]
 
         switch maybeLiteralToken.kind {
-        case .identifier, .string, .numeric:
+        case .identifier, .string, .numeric, .boolean:
             let expression = Expression.literal(maybeLiteralToken)
             expressions.append(expression)
         default:

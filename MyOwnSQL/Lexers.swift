@@ -166,7 +166,12 @@ func lexKeyword(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
         source.formIndex(&cursorCopy.pointer, offsetBy: match.rawValue.count)
         cursorCopy.location.column += match.rawValue.count
 
-        let newToken = Token(kind: .keyword(match), location: cursor.location)
+        var newToken = Token(kind: .keyword(match), location: cursor.location)
+        // TODO: Is this the best way to check for booleans?
+        if [Keyword.true, Keyword.false].contains(match) {
+            newToken.kind = .boolean(match.rawValue)
+        }
+
         return (newToken, cursorCopy, true)
     } else {
         return (nil, cursor, false)
@@ -214,7 +219,6 @@ LEX:        while cursorCopy.pointer < source.endIndex {
     }
 }
 
-// TODO: Need to figure out how to lex a boolean literal
 func lex(_ source: String) -> ([Token]?, String?) {
     var tokens: [Token] = []
     let location = Location(line: 0, column: 0)
