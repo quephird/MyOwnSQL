@@ -40,4 +40,18 @@ class ParserTests: XCTestCase {
         )
         XCTAssertEqual(maybeStatement!, expectedStatement)
     }
+
+    func testSuccessfulParseOfInsertStatement() throws {
+        let source = "INSERT INTO foo VALUES (42, 'x')"
+        let (actualTokens, _) = lex(source)
+        let (maybeStatement, _, _) = parseInsertStatement(actualTokens!, 0)
+        let expectedStatement = InsertStatement(
+            Token(kind: .identifier("foo"), location: Location(line: 0, column: 12)),
+            [
+                .literal(Token(kind: .numeric("42"), location: Location(line: 0, column: 24))),
+                .literal(Token(kind: .string("x"), location: Location(line: 0, column: 28))),
+            ]
+        )
+        XCTAssertEqual(maybeStatement!, expectedStatement)
+    }
 }

@@ -214,6 +214,7 @@ LEX:        while cursorCopy.pointer < source.endIndex {
     }
 }
 
+// TODO: Need to figure out how to lex a boolean literal
 func lex(_ source: String) -> ([Token]?, String?) {
     var tokens: [Token] = []
     let location = Location(line: 0, column: 0)

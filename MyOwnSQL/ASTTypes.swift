@@ -36,9 +36,14 @@ struct SelectStatement: Statement, Equatable {
     }
 }
 
-struct InsertStatement: Statement {
+struct InsertStatement: Statement, Equatable {
     var table: Token
     var items: [Expression]
+
+    init(_ table: Token, _ items: [Expression]) {
+        self.table = table
+        self.items = items
+    }
 }
 
 struct AST {
