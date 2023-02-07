@@ -68,7 +68,7 @@ CHAR: while cursorCopy.pointer < source.endIndex {
     }
 
     let newTokenValue = source[cursor.pointer ..< cursorCopy.pointer]
-    let newToken = Token(value: String(newTokenValue), kind: .numeric, location: cursor.location)
+    let newToken = Token(kind: .numeric(String(newTokenValue)), location: cursor.location)
     return (newToken, cursorCopy, true)
 }
 
@@ -98,7 +98,7 @@ func lexCharacterDelimited(_ source: String, _ cursor: Cursor, _ delimiter: Char
             if nextPointerIndex >= source.endIndex || source[nextPointerIndex] != delimiter {
                 source.formIndex(after: &cursorCopy.pointer)
                 cursorCopy.location.column += 1
-                let newToken = Token(value: value, kind: .string, location: cursor.location)
+                let newToken = Token(kind: .string(value), location: cursor.location)
                 return (newToken, cursorCopy, true)
             } else {
                 value.append(delimiter)
@@ -119,18 +119,20 @@ func lexString(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
     return lexCharacterDelimited(source, cursor, "\'")
 }
 
-func longestMatch(_ source: String, _ cursor: Cursor, _ options: [String]) -> String? {
-    return options.filter { option in
-        // TODO: Is this the best way to support case insensitivity?
-        source[cursor.pointer ..< source.endIndex].hasPrefix(option)
-    }.sorted(by: { (match1, match2) in
-        match1.count > match2.count
-    }).first
+extension RawRepresentable where RawValue == String, Self: CaseIterable {
+    static func longestMatch(_ source: String, _ cursor: Cursor) -> Self? {
+        return self.allCases.filter { option in
+            source[cursor.pointer ..< source.endIndex].hasPrefix(option.rawValue)
+        }.sorted(by: { (match1, match2) in
+            match1.rawValue.count > match2.rawValue.count
+        }).first
+    }
 }
 
 func lexSymbol(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
     var cursorCopy = cursor
 
+    // TODO: Think about moving whitespace lexing to separate lexer function
     switch source[cursor.pointer] {
     // Syntax that should be thrown away
     case "\n":
@@ -144,15 +146,11 @@ func lexSymbol(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
         return (nil, cursorCopy, true)
     // Syntax that should be kept
     default:
-        let allSymbols = Symbol.allCases.map { symbol in
-            symbol.rawValue
-        }
+        if let match = Symbol.longestMatch(source, cursor) {
+            source.formIndex(&cursorCopy.pointer, offsetBy: match.rawValue.count)
+            cursorCopy.location.column += match.rawValue.count
 
-        if let match = longestMatch(source, cursor, allSymbols) {
-            source.formIndex(&cursorCopy.pointer, offsetBy: match.count)
-            cursorCopy.location.column += match.count
-
-            let newToken = Token(value: match, kind: .symbol, location: cursor.location)
+            let newToken = Token(kind: .symbol(match), location: cursor.location)
             return (newToken, cursorCopy, true)
         } else {
             return (nil, cursor, false)
@@ -163,15 +161,17 @@ func lexSymbol(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
 func lexKeyword(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
     var cursorCopy = cursor
 
-    let allKeywords = Keyword.allCases.map { keyword in
-        keyword.rawValue
-    }
+    // TODO: Is this the best way to support case insensitivity?
+    if let match = Keyword.longestMatch(source.lowercased(), cursor) {
+        source.formIndex(&cursorCopy.pointer, offsetBy: match.rawValue.count)
+        cursorCopy.location.column += match.rawValue.count
 
-    if let match = longestMatch(source.lowercased(), cursor, allKeywords) {
-        source.formIndex(&cursorCopy.pointer, offsetBy: match.count)
-        cursorCopy.location.column += match.count
+        var newToken = Token(kind: .keyword(match), location: cursor.location)
+        // TODO: Is this the best way to check for booleans?
+        if [Keyword.true, Keyword.false].contains(match) {
+            newToken.kind = .boolean(match.rawValue)
+        }
 
-        let newToken = Token(value: match, kind: .keyword, location: cursor.location)
         return (newToken, cursorCopy, true)
     } else {
         return (nil, cursor, false)
@@ -182,9 +182,12 @@ func lexIdentifier(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool)
     switch lexCharacterDelimited(source, cursor, "\"") {
     // Handle separately if is a double-quoted identifier
     case (var token?, let newCursor, true):
+        // TODO: This is a bit hacky
         // lexCharacterDelimited() currently returns a token with a string type,
-        // so we need to update it here.
-        token.kind = .identifier
+        // so we need to update it here. Maybe make lexCharacterDelimited()
+        // return the parsed string instead?
+        guard case .string(let str) = token.kind else { fatalError() }
+        token.kind = .identifier(str)
         return (token, newCursor, true)
     default:
         var cursorCopy = cursor
@@ -207,7 +210,7 @@ LEX:        while cursorCopy.pointer < source.endIndex {
             if value.count == 0 {
                 return (nil, cursor, false)
             } else {
-                let newToken = Token(value: value, kind: .identifier, location: cursor.location)
+                let newToken = Token(kind: .identifier(value), location: cursor.location)
                 return (newToken, cursorCopy, true)
             }
         default:
@@ -239,7 +242,7 @@ LEX:
 
         var hint = ""
         if tokens.count > 0 {
-            hint = " after " + tokens[tokens.count-1].value
+            hint = " after " + tokens[tokens.count-1].kind.description
         }
 
         let errorMessage = "Unable to lex token\(hint), at line \(cursor.location.line), column \(cursor.location.column)"

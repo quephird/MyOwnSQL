@@ -20,8 +20,7 @@ class LexerTests: XCTestCase {
             let cursor = Cursor(pointer: testSource.startIndex, location: location)
             let (actualToken, _, actualParsed) = lexString(testSource, cursor)
             XCTAssertTrue(actualParsed)
-            XCTAssertEqual(actualToken!.value, expectedTokenValue)
-            XCTAssertEqual(actualToken!.kind, .string)
+            XCTAssertEqual(actualToken!.kind, .string(expectedTokenValue))
         }
     }
 
@@ -54,8 +53,7 @@ class LexerTests: XCTestCase {
 
             let (actualToken, _, actualParsed) = lexNumeric(testSource, cursor)
             XCTAssertTrue(actualParsed)
-            XCTAssertEqual(actualToken!.value, expectedTokenValue)
-            XCTAssertEqual(actualToken!.kind, .numeric)
+            XCTAssertEqual(actualToken!.kind, .numeric(expectedTokenValue))
         }
     }
 
@@ -113,8 +111,7 @@ select * from bar;
 
             let (actualToken, _, actualParsed) = lexSymbol(testSource, cursor)
             XCTAssertTrue(actualParsed)
-            XCTAssertEqual(actualToken!.value, expectedTokenValue)
-            XCTAssertEqual(actualToken!.kind, .symbol)
+            XCTAssertEqual(actualToken!.kind, .symbol(Symbol(rawValue: expectedTokenValue)!))
         }
     }
 
@@ -130,9 +127,24 @@ select * from bar;
 
             let (actualToken, newCursor, actualParsed) = lexKeyword(testSource, cursor)
             XCTAssertTrue(actualParsed)
-            XCTAssertEqual(actualToken!.value, expectedTokenValue)
-            XCTAssertEqual(actualToken!.kind, .keyword)
-            XCTAssertEqual(newCursor.location.column, cursor.location.column + actualToken!.value.count)
+            XCTAssertEqual(actualToken!.kind, .keyword(Keyword(rawValue: expectedTokenValue)!))
+            XCTAssertEqual(newCursor.location.column, cursor.location.column + actualToken!.kind.description.count)
+        }
+    }
+
+    func testSuccessfulBooleanParses() throws {
+        let location = Location(line: 0, column: 0)
+
+        for (testSource, expectedTokenValue) in [
+            ("true ", "true"),
+            ("false ", "false"),
+        ] {
+            let cursor = Cursor(pointer: testSource.startIndex, location: location)
+
+            let (actualToken, newCursor, actualParsed) = lexKeyword(testSource, cursor)
+            XCTAssertTrue(actualParsed)
+            XCTAssertEqual(actualToken!.kind, .boolean(expectedTokenValue))
+            XCTAssertEqual(newCursor.location.column, cursor.location.column + actualToken!.kind.description.count)
         }
     }
 
@@ -161,8 +173,7 @@ select * from bar;
 
             let (actualToken, _, actualParsed) = lexIdentifier(testSource, cursor)
             XCTAssertTrue(actualParsed)
-            XCTAssertEqual(actualToken!.value, expectedTokenValue)
-            XCTAssertEqual(actualToken!.kind, .identifier)
+            XCTAssertEqual(actualToken!.kind, .identifier(expectedTokenValue))
         }
     }
 
@@ -186,15 +197,15 @@ WHERE bar = 42;
         let (actualTokens, actualErrorMessage) = lex(source)
 
         let expectedTokens = [
-            Token(value: "select", kind: .keyword, location: Location(line: 0, column: 0)),
-            Token(value: "x", kind: .string, location: Location(line: 0, column: 7)),
-            Token(value: "from", kind: .keyword, location: Location(line: 0, column: 11)),
-            Token(value: "foo", kind: .identifier, location: Location(line: 0, column: 16)),
-            Token(value: "where", kind: .keyword, location: Location(line: 1, column: 0)),
-            Token(value: "bar", kind: .identifier, location: Location(line: 1, column: 6)),
-            Token(value: "=", kind: .symbol, location: Location(line: 1, column: 10)),
-            Token(value: "42", kind: .numeric, location: Location(line: 1, column: 12)),
-            Token(value: ";", kind: .symbol, location: Location(line: 1, column: 14)),
+            Token(kind: .keyword(.select), location: Location(line: 0, column: 0)),
+            Token(kind: .string("x"), location: Location(line: 0, column: 7)),
+            Token(kind: .keyword(.from), location: Location(line: 0, column: 11)),
+            Token(kind: .identifier("foo"), location: Location(line: 0, column: 16)),
+            Token(kind: .keyword(.where), location: Location(line: 1, column: 0)),
+            Token(kind: .identifier("bar"), location: Location(line: 1, column: 6)),
+            Token(kind: .symbol(.equals), location: Location(line: 1, column: 10)),
+            Token(kind: .numeric("42"), location: Location(line: 1, column: 12)),
+            Token(kind: .symbol(.semicolon), location: Location(line: 1, column: 14)),
         ]
         XCTAssertEqual(actualTokens!, expectedTokens)
         XCTAssertNil(actualErrorMessage)
