@@ -5,7 +5,7 @@
 //  Created by Danielle Kefford on 2/7/23.
 //
 
-enum MemoryCell {
+enum MemoryCell: Equatable {
     case stringValue(String)
     case intValue(Int)
     case booleanValue(Bool)
@@ -17,19 +17,25 @@ enum ColumnType {
     case boolean
 }
 
-struct Table {
+class Table {
     var columnNames: [String]
     var columnTypes: [ColumnType]
     var data: [[MemoryCell]]
+
+    init(_ columnNames: [String], _ columnTypes: [ColumnType]) {
+        self.columnNames = columnNames
+        self.columnTypes = columnTypes
+        self.data = []
+    }
 }
 
-struct MemoryBackend {
+class MemoryBackend {
     var tables: [String: Table] = [:]
 
-    mutating func createTable(_ cs: CreateStatement) {
+    func createTable(_ create: CreateStatement) {
         var columnNames: [String] = []
         var columnTypes: [ColumnType] = []
-        for case .column(let nameToken, let typeToken) in cs.columns {
+        for case .column(let nameToken, let typeToken) in create.columns {
             switch nameToken.kind {
             case .identifier(let name):
                 columnNames.append(name)
@@ -54,12 +60,63 @@ struct MemoryBackend {
             }
         }
 
-        switch cs.table.kind {
+        switch create.table.kind {
         case .identifier(let tableName):
-            let newTable = Table(columnNames: columnNames, columnTypes: columnTypes, data: [])
+            let newTable = Table(columnNames, columnTypes)
             self.tables[tableName] = newTable
         default:
             fatalError("Invalid token for table name")
         }
+    }
+
+    func insertTable(_ insert: InsertStatement) {
+        switch insert.table.kind {
+        case .identifier(let tableName):
+            if let table = self.tables[tableName] {
+                var newRow: [MemoryCell] = []
+                for item in insert.items {
+                    switch item {
+                    case .literal(let token):
+                        if let newCell = makeMemoryCell(token) {
+                            newRow.append(newCell)
+                        } else {
+                            fatalError("Unable to create cell value from token")
+                        }
+                    }
+                }
+
+                table.data.append(newRow)
+            } else {
+                fatalError("Table does not exist")
+            }
+        default:
+            fatalError("Invalid token for table name")
+        }
+    }
+}
+
+func makeMemoryCell(_ token: Token) -> MemoryCell? {
+    switch token.kind {
+    case .string(let value):
+        return .stringValue(value)
+    case .numeric(let value):
+        // TODO: Here is where we should endeavor to try
+        //       to create a float value if we can't create
+        //       an int
+        if let value = Int(value) {
+            return .intValue(value)
+        } else {
+            // TODO: Use fatalError() here for now
+            return nil
+        }
+    case .boolean(let value):
+        switch value {
+        case "true":
+            return .booleanValue(true)
+        default:
+            return .booleanValue(false)
+        }
+    default:
+        return nil
     }
 }

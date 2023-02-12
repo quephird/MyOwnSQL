@@ -28,6 +28,9 @@ func parseExpressions(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResul
         let maybeLiteralToken = tokens[tokenCursorCopy]
 
         switch maybeLiteralToken.kind {
+        // TODO: Consider instead being able to handle tokens
+        //       for true and false keywords, and removing the
+        //       boolean token type
         case .identifier, .string, .numeric, .boolean:
             let expression = Expression.literal(maybeLiteralToken)
             expressions.append(expression)
