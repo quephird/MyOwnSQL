@@ -214,7 +214,11 @@ select * from bar;
 SELECT 'x' FROM foo
 WHERE bar = 42;
 """
-        let (actualTokens, actualErrorMessage) = lex(source)
+        let result = lex(source)
+        guard case .success(let actualTokens) = result else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
 
         let expectedTokens = [
             Token(kind: .keyword(.select), location: Location(line: 0, column: 0)),
@@ -227,15 +231,18 @@ WHERE bar = 42;
             Token(kind: .numeric("42"), location: Location(line: 1, column: 12)),
             Token(kind: .symbol(.semicolon), location: Location(line: 1, column: 14)),
         ]
-        XCTAssertEqual(actualTokens!, expectedTokens)
-        XCTAssertNil(actualErrorMessage)
+        XCTAssertEqual(actualTokens, expectedTokens)
     }
 
     func testFailedLex() throws {
         let source = "SELECT 'foo FROM bar;"
-        let (actualTokens, actualErrorMessage) = lex(source)
-        XCTAssertNil(actualTokens)
+        let result = lex(source)
+        guard case .failure(let actualErrorMessage) = result else {
+            XCTFail("Lexing succeeded unexpectedly")
+            return
+        }
+
         let expectedErrorMessage = "Unable to lex token after select, at line 0, column 7"
-        XCTAssertEqual(actualErrorMessage!, expectedErrorMessage)
+        XCTAssertEqual(actualErrorMessage, expectedErrorMessage)
     }
 }

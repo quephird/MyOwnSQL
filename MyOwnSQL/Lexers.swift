@@ -226,7 +226,12 @@ LEX:        while cursorCopy.pointer < source.endIndex {
     }
 }
 
-func lex(_ source: String) -> ([Token]?, String?) {
+enum LexResult: Equatable {
+    case failure(String)
+    case success([Token])
+}
+
+func lex(_ source: String) -> LexResult {
     var tokens: [Token] = []
     let location = Location(line: 0, column: 0)
     var cursor = Cursor(pointer: source.startIndex, location: location)
@@ -255,8 +260,8 @@ LEX:
         }
 
         let errorMessage = "Unable to lex token\(hint), at line \(cursor.location.line), column \(cursor.location.column)"
-        return (nil, errorMessage)
+        return .failure(errorMessage)
     }
 
-    return (tokens, nil)
+    return .success(tokens)
 }
