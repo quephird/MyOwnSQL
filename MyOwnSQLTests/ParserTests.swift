@@ -15,7 +15,10 @@ class ParserTests: XCTestCase {
             return
         }
 
-        let (maybeStatement, _, _) = parseSelectStatement(tokens, 0)
+        guard case .success(_, .select(let statement)) = parseSelectStatement(tokens, 0) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
         let expectedStatement = SelectStatement(
             Token(kind: .identifier("bar"), location: Location(line: 0, column: 31)),
             [
@@ -25,7 +28,7 @@ class ParserTests: XCTestCase {
                 .literal(Token(kind: .identifier("foo"), location: Location(line: 0, column: 22))),
             ]
         )
-        XCTAssertEqual(maybeStatement!, expectedStatement)
+        XCTAssertEqual(statement, expectedStatement)
     }
 
     func testSuccessfulParseOfCreateStatement() throws {
@@ -35,7 +38,10 @@ class ParserTests: XCTestCase {
             return
         }
 
-        let (maybeStatement, _, _) = parseCreateStatement(tokens, 0)
+        guard case .success(_, .create(let statement)) = parseCreateStatement(tokens, 0) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
         let expectedStatement = CreateStatement(
             Token(kind: .identifier("foo"), location: Location(line: 0, column: 13)),
             [
@@ -47,7 +53,7 @@ class ParserTests: XCTestCase {
                         Token(kind: .keyword(Keyword(rawValue: "boolean")!), location: Location(line: 0, column: 42))),
             ]
         )
-        XCTAssertEqual(maybeStatement!, expectedStatement)
+        XCTAssertEqual(statement, expectedStatement)
     }
 
     func testSuccessfulParseOfInsertStatement() throws {
@@ -57,7 +63,10 @@ class ParserTests: XCTestCase {
             return
         }
 
-        let (maybeStatement, _, _) = parseInsertStatement(tokens, 0)
+        guard case .success(_, .insert(let statement)) = parseInsertStatement(tokens, 0) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
         let expectedStatement = InsertStatement(
             Token(kind: .identifier("foo"), location: Location(line: 0, column: 12)),
             [
@@ -66,6 +75,6 @@ class ParserTests: XCTestCase {
                 .literal(Token(kind: .boolean("false"), location: Location(line: 0, column: 33))),
             ]
         )
-        XCTAssertEqual(maybeStatement!, expectedStatement)
+        XCTAssertEqual(statement, expectedStatement)
     }
 }

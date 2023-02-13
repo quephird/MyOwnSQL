@@ -1,5 +1,5 @@
 //
-//  ASTTypes.swift
+//  ParserTypes.swift
 //  MyOwnSQL
 //
 //  Created by Danielle Kefford on 2/1/23.
@@ -13,10 +13,7 @@ enum Definition: Equatable {
     case column(Token, Token)
 }
 
-protocol Statement {
-}
-
-struct CreateStatement: Statement, Equatable {
+struct CreateStatement: Equatable {
     var table: Token
     var columns: [Definition]
 
@@ -26,7 +23,7 @@ struct CreateStatement: Statement, Equatable {
     }
 }
 
-struct SelectStatement: Statement, Equatable {
+struct SelectStatement: Equatable {
     var table: Token
     var items: [Expression]
 
@@ -36,7 +33,7 @@ struct SelectStatement: Statement, Equatable {
     }
 }
 
-struct InsertStatement: Statement, Equatable {
+struct InsertStatement: Equatable {
     var table: Token
     var items: [Expression]
 
@@ -44,4 +41,10 @@ struct InsertStatement: Statement, Equatable {
         self.table = table
         self.items = items
     }
+}
+
+enum Statement {
+    case create(CreateStatement)
+    case insert(InsertStatement)
+    case select(SelectStatement)
 }
