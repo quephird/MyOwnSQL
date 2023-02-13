@@ -10,8 +10,12 @@ import XCTest
 class ParserTests: XCTestCase {
     func testSuccessfulParseOfSelectStatement() throws {
         let source = "SELECT 42, 'x', true, foo FROM bar"
-        let (actualTokens, _) = lex(source)
-        let (maybeStatement, _, _) = parseSelectStatement(actualTokens!, 0)
+        guard case .success(let tokens) = lex(source) else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
+
+        let (maybeStatement, _, _) = parseSelectStatement(tokens, 0)
         let expectedStatement = SelectStatement(
             Token(kind: .identifier("bar"), location: Location(line: 0, column: 31)),
             [
@@ -26,8 +30,12 @@ class ParserTests: XCTestCase {
 
     func testSuccessfulParseOfCreateStatement() throws {
         let source = "CREATE TABLE foo (bar int, baz text, quux boolean)"
-        let (actualTokens, _) = lex(source)
-        let (maybeStatement, _, _) = parseCreateStatement(actualTokens!, 0)
+        guard case .success(let tokens) = lex(source) else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
+
+        let (maybeStatement, _, _) = parseCreateStatement(tokens, 0)
         let expectedStatement = CreateStatement(
             Token(kind: .identifier("foo"), location: Location(line: 0, column: 13)),
             [
@@ -44,8 +52,12 @@ class ParserTests: XCTestCase {
 
     func testSuccessfulParseOfInsertStatement() throws {
         let source = "INSERT INTO foo VALUES (42, 'x', false)"
-        let (actualTokens, _) = lex(source)
-        let (maybeStatement, _, _) = parseInsertStatement(actualTokens!, 0)
+        guard case .success(let tokens) = lex(source) else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
+
+        let (maybeStatement, _, _) = parseInsertStatement(tokens, 0)
         let expectedStatement = InsertStatement(
             Token(kind: .identifier("foo"), location: Location(line: 0, column: 12)),
             [
