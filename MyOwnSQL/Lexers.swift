@@ -5,7 +5,12 @@
 //  Created by Danielle Kefford on 1/5/23.
 //
 
-func lexNumeric(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
+enum SublexResult: Equatable {
+    case failure
+    case success(Cursor, Token?)
+}
+
+func lexNumeric(_ source: String, _ cursor: Cursor) -> SublexResult {
     var cursorCopy = cursor
 
     var periodFound = false
@@ -19,14 +24,14 @@ CHAR: while cursorCopy.pointer < source.endIndex {
 
         case ".":
             if periodFound {
-                return (nil, cursor, false)
+                return .failure
             }
 
             periodFound = true
 
         case "e":
             if cursorCopy.pointer == cursor.pointer {
-                return (nil, cursor, false)
+                return .failure
             }
 
             // No periods allowed after expMarker
@@ -34,7 +39,7 @@ CHAR: while cursorCopy.pointer < source.endIndex {
 
             // expMarker must not be at the end of the string
             if cursorCopy.pointer == source.index(before: source.endIndex) {
-                return (nil, cursor, false)
+                return .failure
             }
 
             let nextPointerIndex = source.index(after: cursorCopy.pointer)
@@ -47,12 +52,12 @@ CHAR: while cursorCopy.pointer < source.endIndex {
             case "0"..."9":
                 break
             default:
-                return (nil, cursor, false)
+                return .failure
             }
 
         default:
             if cursorCopy.pointer == cursor.pointer {
-                return (nil, cursor, false)
+                return .failure
             }
 
             break CHAR
@@ -64,24 +69,24 @@ CHAR: while cursorCopy.pointer < source.endIndex {
 
     // If no characters accumulated, then return
     if cursorCopy.pointer == cursor.pointer {
-        return (nil, cursor, false)
+        return .failure
     }
 
     let newTokenValue = source[cursor.pointer ..< cursorCopy.pointer]
     let newToken = Token(kind: .numeric(String(newTokenValue)), location: cursor.location)
-    return (newToken, cursorCopy, true)
+    return .success(cursorCopy, newToken)
 }
 
-func lexCharacterDelimited(_ source: String, _ cursor: Cursor, _ delimiter: Character) -> (Token?, Cursor, Bool) {
+func lexCharacterDelimited(_ source: String, _ cursor: Cursor, _ delimiter: Character) -> SublexResult {
     var cursorCopy = cursor
 
     let currentIndex = cursorCopy.pointer
     if source[currentIndex...].count == 0 {
-        return (nil, cursor, false)
+        return .failure
     }
 
     if source[currentIndex] != delimiter {
-        return (nil, cursor, false)
+        return .failure
     }
 
     cursorCopy.location.column += 1
@@ -99,7 +104,7 @@ func lexCharacterDelimited(_ source: String, _ cursor: Cursor, _ delimiter: Char
                 source.formIndex(after: &cursorCopy.pointer)
                 cursorCopy.location.column += 1
                 let newToken = Token(kind: .string(value), location: cursor.location)
-                return (newToken, cursorCopy, true)
+                return .success(cursorCopy, newToken)
             } else {
                 value.append(delimiter)
                 source.formIndex(after: &cursorCopy.pointer)
@@ -112,10 +117,10 @@ func lexCharacterDelimited(_ source: String, _ cursor: Cursor, _ delimiter: Char
         cursorCopy.location.column += 1
     }
 
-    return (nil, cursor, false)
+    return .failure
 }
 
-func lexString(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
+func lexString(_ source: String, _ cursor: Cursor) -> SublexResult {
     return lexCharacterDelimited(source, cursor, "\'")
 }
 
@@ -129,7 +134,7 @@ extension RawRepresentable where RawValue == String, Self: CaseIterable {
     }
 }
 
-func lexSymbol(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
+func lexSymbol(_ source: String, _ cursor: Cursor) -> SublexResult {
     var cursorCopy = cursor
 
     // TODO: Think about moving whitespace lexing to separate lexer function
@@ -139,11 +144,11 @@ func lexSymbol(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
         source.formIndex(after: &cursorCopy.pointer)
         cursorCopy.location.line += 1
         cursorCopy.location.column = 0
-        return (nil, cursorCopy, true)
+        return .success(cursorCopy, nil)
     case "\t", " ":
         source.formIndex(after: &cursorCopy.pointer)
         cursorCopy.location.column += 1
-        return (nil, cursorCopy, true)
+        return .success(cursorCopy, nil)
     // Syntax that should be kept
     default:
         if let match = Symbol.longestMatch(source, cursor) {
@@ -151,14 +156,14 @@ func lexSymbol(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
             cursorCopy.location.column += match.rawValue.count
 
             let newToken = Token(kind: .symbol(match), location: cursor.location)
-            return (newToken, cursorCopy, true)
+            return .success(cursorCopy, newToken)
         } else {
-            return (nil, cursor, false)
+            return .failure
         }
     }
 }
 
-func lexKeyword(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
+func lexKeyword(_ source: String, _ cursor: Cursor) -> SublexResult {
     var cursorCopy = cursor
 
     // TODO: Is this the best way to support case insensitivity?
@@ -172,24 +177,26 @@ func lexKeyword(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
             newToken.kind = .boolean(match.rawValue)
         }
 
-        return (newToken, cursorCopy, true)
+        return .success(cursorCopy, newToken)
     } else {
-        return (nil, cursor, false)
+        return .failure
     }
 }
 
-func lexIdentifier(_ source: String, _ cursor: Cursor) -> (Token?, Cursor, Bool) {
+func lexIdentifier(_ source: String, _ cursor: Cursor) -> SublexResult {
     switch lexCharacterDelimited(source, cursor, "\"") {
     // Handle separately if is a double-quoted identifier
-    case (var token?, let newCursor, true):
+    case .success(let newCursor, var token?):
         // TODO: This is a bit hacky
         // lexCharacterDelimited() currently returns a token with a string type,
         // so we need to update it here. Maybe make lexCharacterDelimited()
         // return the parsed string instead?
         guard case .string(let str) = token.kind else { fatalError() }
         token.kind = .identifier(str)
-        return (token, newCursor, true)
-    default:
+        return .success(newCursor, token)
+    case .success(_, nil):
+        fatalError()
+    case .failure:
         var cursorCopy = cursor
 
         switch source[cursorCopy.pointer] {
@@ -208,13 +215,13 @@ LEX:        while cursorCopy.pointer < source.endIndex {
             }
 
             if value.count == 0 {
-                return (nil, cursor, false)
+                return .failure
             } else {
                 let newToken = Token(kind: .identifier(value), location: cursor.location)
-                return (newToken, cursorCopy, true)
+                return .success(cursorCopy, newToken)
             }
         default:
-            return (nil, cursor, false)
+            return .failure
         }
     }
 }
@@ -228,8 +235,8 @@ LEX:
     while cursor.pointer < source.endIndex {
         let lexers = [lexKeyword, lexSymbol, lexString, lexNumeric, lexIdentifier]
         for lexer in lexers {
-            let (maybeToken, newCursor, parsed) = lexer(source, cursor)
-            if parsed {
+            switch lexer(source, cursor) {
+            case .success(let newCursor, let maybeToken):
                 cursor = newCursor
 
                 if let token = maybeToken {
@@ -237,6 +244,8 @@ LEX:
                 }
 
                 continue LEX
+            case .failure:
+                continue
             }
         }
 
