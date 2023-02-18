@@ -5,12 +5,12 @@
 //  Created by Danielle Kefford on 1/5/23.
 //
 
-enum SublexResult: Equatable {
+enum LexHelperResult: Equatable {
     case failure
     case success(Cursor, Token?)
 }
 
-func lexNumeric(_ source: String, _ cursor: Cursor) -> SublexResult {
+func lexNumeric(_ source: String, _ cursor: Cursor) -> LexHelperResult {
     var cursorCopy = cursor
 
     var periodFound = false
@@ -77,7 +77,7 @@ CHAR: while cursorCopy.pointer < source.endIndex {
     return .success(cursorCopy, newToken)
 }
 
-func lexCharacterDelimited(_ source: String, _ cursor: Cursor, _ delimiter: Character) -> SublexResult {
+func lexCharacterDelimited(_ source: String, _ cursor: Cursor, _ delimiter: Character) -> LexHelperResult {
     var cursorCopy = cursor
 
     let currentIndex = cursorCopy.pointer
@@ -120,7 +120,7 @@ func lexCharacterDelimited(_ source: String, _ cursor: Cursor, _ delimiter: Char
     return .failure
 }
 
-func lexString(_ source: String, _ cursor: Cursor) -> SublexResult {
+func lexString(_ source: String, _ cursor: Cursor) -> LexHelperResult {
     return lexCharacterDelimited(source, cursor, "\'")
 }
 
@@ -134,7 +134,7 @@ extension RawRepresentable where RawValue == String, Self: CaseIterable {
     }
 }
 
-func lexSymbol(_ source: String, _ cursor: Cursor) -> SublexResult {
+func lexSymbol(_ source: String, _ cursor: Cursor) -> LexHelperResult {
     var cursorCopy = cursor
 
     // TODO: Think about moving whitespace lexing to separate lexer function
@@ -163,7 +163,7 @@ func lexSymbol(_ source: String, _ cursor: Cursor) -> SublexResult {
     }
 }
 
-func lexKeyword(_ source: String, _ cursor: Cursor) -> SublexResult {
+func lexKeyword(_ source: String, _ cursor: Cursor) -> LexHelperResult {
     var cursorCopy = cursor
 
     // TODO: Is this the best way to support case insensitivity?
@@ -183,7 +183,7 @@ func lexKeyword(_ source: String, _ cursor: Cursor) -> SublexResult {
     }
 }
 
-func lexIdentifier(_ source: String, _ cursor: Cursor) -> SublexResult {
+func lexIdentifier(_ source: String, _ cursor: Cursor) -> LexHelperResult {
     switch lexCharacterDelimited(source, cursor, "\"") {
     // Handle separately if is a double-quoted identifier
     case .success(let newCursor, var token?):

@@ -5,11 +5,6 @@
 //  Created by Danielle Kefford on 2/3/23.
 //
 
-enum ParseResult {
-    case failure
-    case success(Int, Statement)
-}
-
 // We expect each item in the list of expressions to be in the form:
 //
 //     <column name> or <numeric value> or <string value>
@@ -44,10 +39,15 @@ func parseExpressions(_ tokens: [Token], _ tokenCursor: Int) -> ([Expression]?, 
     return (expressions, tokenCursorCopy, true)
 }
 
+enum ParseHelperResult {
+    case failure
+    case success(Int, Statement)
+}
+
 // For now, the structure of a supported SELECT statement is the following:
 //
 //     SELECT <one or more expressions> FROM <table name>
-func parseSelectStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseResult {
+func parseSelectStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult {
     var tokenCursorCopy = tokenCursor
 
     if tokens[tokenCursorCopy].kind != TokenKind.keyword(.select) {
@@ -116,7 +116,7 @@ func parseColumns(_ tokens: [Token], _ tokenCursor: Int) -> ([Definition]?, Int,
 // For now, the structure of a supported CREATE TABLE statement is the following:
 //
 //     CREATE TABLE <table name> <one or more column definitions>
-func parseCreateStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseResult {
+func parseCreateStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult {
     var tokenCursorCopy = tokenCursor
 
     if tokens[tokenCursorCopy].kind != TokenKind.keyword(.create) {
@@ -158,7 +158,7 @@ func parseCreateStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseResult 
 // For now, the structure of a supported INSERT statement is the following:
 //
 //     INSERT INTO <table name> VALUES (<one or more expressions>)
-func parseInsertStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseResult {
+func parseInsertStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult {
     var tokenCursorCopy = tokenCursor
 
     if tokens[tokenCursorCopy].kind != TokenKind.keyword(.insert) {
@@ -202,4 +202,30 @@ func parseInsertStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseResult 
     return .success(tokenCursorCopy, .insert(statement))
 }
 
-// TODO: Need main driving function, parseStatement!!!
+enum ParseResult {
+    case failure
+    case success(Int, Statement)
+}
+
+func parseStatement(_ tokens: [Token], _ cursor: Int) -> ParseResult {
+    let parseHelpers = [
+        parseCreateStatement,
+        parseInsertStatement,
+        parseSelectStatement,
+    ]
+    for helper in parseHelpers {
+        switch helper(tokens, cursor) {
+        case .success(let cursor, let statement):
+            return .success(cursor, statement)
+        default:
+            continue
+        }
+    }
+
+    return .failure
+}
+
+// TODO: Need outermost parse function which
+//
+// * accounts for delimiting semicolons
+// * assembles and returns a set of Statements

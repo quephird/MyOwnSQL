@@ -77,4 +77,19 @@ class ParserTests: XCTestCase {
         )
         XCTAssertEqual(statement, expectedStatement)
     }
+
+    func testParseStatement() throws {
+        let source = "SELECT 42, 'x', true, foo FROM bar;"
+        guard case .success(let tokens) = lex(source) else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
+
+        guard case .success(let cursor, .select) = parseStatement(tokens, 0) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+
+        XCTAssertEqual(cursor, 10)
+    }
 }
