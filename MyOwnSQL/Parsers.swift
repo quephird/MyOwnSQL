@@ -5,12 +5,17 @@
 //  Created by Danielle Kefford on 2/3/23.
 //
 
+enum ParseExpressionsResult {
+    case failure
+    case success(Int, [Expression])
+}
+
 // We expect each item in the list of expressions to be in the form:
 //
 //     <column name> or <numeric value> or <string value>
 //
 // ... and to be delimited by a comma
-func parseExpressions(_ tokens: [Token], _ tokenCursor: Int) -> ([Expression]?, Int, Bool) {
+func parseExpressions(_ tokens: [Token], _ tokenCursor: Int) -> ParseExpressionsResult {
     var tokenCursorCopy = tokenCursor
     var expressions: [Expression] = []
 
@@ -22,7 +27,7 @@ func parseExpressions(_ tokens: [Token], _ tokenCursor: Int) -> ([Expression]?, 
             let expression = Expression.literal(maybeLiteralToken)
             expressions.append(expression)
         default:
-            return (nil, tokenCursor, false)
+            return .failure
         }
 
         // TODO: Need to check if we're out of tokens
@@ -36,39 +41,48 @@ func parseExpressions(_ tokens: [Token], _ tokenCursor: Int) -> ([Expression]?, 
         }
     }
 
-    return (expressions, tokenCursorCopy, true)
+    return .success(tokenCursorCopy, expressions)
+}
+
+enum ParseHelperResult {
+    case failure
+    case success(Int, Statement)
 }
 
 // For now, the structure of a supported SELECT statement is the following:
 //
 //     SELECT <one or more expressions> FROM <table name>
-func parseSelectStatement(_ tokens: [Token], _ tokenCursor: Int) -> (SelectStatement?, Int, Bool) {
+func parseSelectStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult {
     var tokenCursorCopy = tokenCursor
 
     if tokens[tokenCursorCopy].kind != TokenKind.keyword(.select) {
-        return (nil, tokenCursor, false)
+        return .failure
     }
     tokenCursorCopy += 1
 
-    let (expressions, newTokenCursor, parsed) = parseExpressions(tokens, tokenCursorCopy)
-    if !parsed {
-        return (nil, tokenCursor, false)
+    guard case .success(let newTokenCursor, let expressions) = parseExpressions(tokens, tokenCursorCopy) else {
+        return .failure
     }
     tokenCursorCopy = newTokenCursor
 
     if tokens[tokenCursorCopy].kind != TokenKind.keyword(.from) {
-        return (nil, tokenCursor, false)
+        return .failure
     }
     tokenCursorCopy += 1
 
     guard case .identifier = tokens[tokenCursorCopy].kind else {
-        return (nil, tokenCursor, false)
+        return .failure
     }
     let table = tokens[tokenCursorCopy]
     tokenCursorCopy += 1
 
-    let statement = SelectStatement(table, expressions!)
-    return (statement, tokenCursorCopy, true)
+    let statement = SelectStatement(table, expressions)
+    return .success(tokenCursorCopy, .select(statement))
+}
+
+enum ParseColumnDefinitionsResult {
+    case failure
+    case success(Int, [Definition])
 }
 
 // We expect each item in the list of column definitions to be in the form:
@@ -76,13 +90,13 @@ func parseSelectStatement(_ tokens: [Token], _ tokenCursor: Int) -> (SelectState
 //     <column name> <column type>
 //
 // ... and to be delimited by a comma
-func parseColumns(_ tokens: [Token], _ tokenCursor: Int) -> ([Definition]?, Int, Bool) {
+func parseColumns(_ tokens: [Token], _ tokenCursor: Int) -> ParseColumnDefinitionsResult {
     var tokenCursorCopy = tokenCursor
     var columns: [Definition] = []
 
     while tokenCursorCopy < tokens.count {
         guard case .identifier = tokens[tokenCursorCopy].kind else {
-            return (nil, tokenCursor, false)
+            return .failure
         }
         let name = tokens[tokenCursorCopy]
         tokenCursorCopy += 1
@@ -90,7 +104,7 @@ func parseColumns(_ tokens: [Token], _ tokenCursor: Int) -> ([Definition]?, Int,
         let maybeDatatype = tokens[tokenCursorCopy]
         guard case .keyword(let keyword) = maybeDatatype.kind,
               [Keyword.int, Keyword.text, Keyword.boolean].contains(keyword) else {
-            return (nil, tokenCursor, false)
+            return .failure
         }
         let column = Definition.column(name, maybeDatatype)
         columns.append(column)
@@ -105,94 +119,120 @@ func parseColumns(_ tokens: [Token], _ tokenCursor: Int) -> ([Definition]?, Int,
     }
 
     // TODO: Need to check count of column definitions
-    return (columns, tokenCursorCopy, true)
+    return .success(tokenCursorCopy, columns)
 }
 
 // For now, the structure of a supported CREATE TABLE statement is the following:
 //
 //     CREATE TABLE <table name> <one or more column definitions>
-func parseCreateStatement(_ tokens: [Token], _ tokenCursor: Int) -> (CreateStatement?, Int, Bool) {
+func parseCreateStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult {
     var tokenCursorCopy = tokenCursor
 
     if tokens[tokenCursorCopy].kind != TokenKind.keyword(.create) {
-        return (nil, tokenCursor, false)
+        return .failure
     }
     tokenCursorCopy += 1
 
     if tokens[tokenCursorCopy].kind != TokenKind.keyword(.table) {
-        return (nil, tokenCursor, false)
+        return .failure
     }
     tokenCursorCopy += 1
 
     guard case .identifier = tokens[tokenCursorCopy].kind else {
-        return (nil, tokenCursor, false)
+        return .failure
     }
     let table = tokens[tokenCursorCopy]
     tokenCursorCopy += 1
 
     if tokens[tokenCursorCopy].kind != TokenKind.symbol(.leftParenthesis) {
-        return (nil, tokenCursor, false)
+        return .failure
     }
     tokenCursorCopy += 1
 
-    let (columns, newTokenCursor, parsed) = parseColumns(tokens, tokenCursorCopy)
-    if !parsed {
-        return (nil, tokenCursor, false)
+    guard case .success(let newTokenCursor, let columns) = parseColumns(tokens, tokenCursorCopy) else {
+        return .failure
     }
     tokenCursorCopy = newTokenCursor
 
     if tokens[tokenCursorCopy].kind != TokenKind.symbol(.rightParenthesis) {
-        return (nil, tokenCursor, false)
+        return .failure
     }
     tokenCursorCopy += 1
 
-    let statement = CreateStatement(table, columns!)
-    return (statement, tokenCursorCopy, true)
+    let statement = CreateStatement(table, columns)
+    return .success(tokenCursorCopy, .create(statement))
 }
 
 // For now, the structure of a supported INSERT statement is the following:
 //
 //     INSERT INTO <table name> VALUES (<one or more expressions>)
-func parseInsertStatement(_ tokens: [Token], _ tokenCursor: Int) -> (InsertStatement?, Int, Bool) {
+func parseInsertStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult {
     var tokenCursorCopy = tokenCursor
 
     if tokens[tokenCursorCopy].kind != TokenKind.keyword(.insert) {
-        return (nil, tokenCursor, false)
+        return .failure
     }
     tokenCursorCopy += 1
 
     if tokens[tokenCursorCopy].kind != TokenKind.keyword(.into) {
-        return (nil, tokenCursor, false)
+        return .failure
     }
     tokenCursorCopy += 1
 
     guard case .identifier = tokens[tokenCursorCopy].kind else {
-        return (nil, tokenCursor, false)
+        return .failure
     }
     let table = tokens[tokenCursorCopy]
     tokenCursorCopy += 1
 
     if tokens[tokenCursorCopy].kind != TokenKind.keyword(.values) {
-        return (nil, tokenCursor, false)
+        return .failure
     }
     tokenCursorCopy += 1
 
     if tokens[tokenCursorCopy].kind != TokenKind.symbol(.leftParenthesis) {
-        return (nil, tokenCursor, false)
+        return .failure
     }
     tokenCursorCopy += 1
 
-    let (expressions, newTokenCursor, parsed) = parseExpressions(tokens, tokenCursorCopy)
-    if !parsed {
-        return (nil, tokenCursor, false)
+    guard case .success(let newTokenCursor, let expressions) = parseExpressions(tokens, tokenCursorCopy) else {
+        return .failure
     }
     tokenCursorCopy = newTokenCursor
 
     if tokens[tokenCursorCopy].kind != TokenKind.symbol(.rightParenthesis) {
-        return (nil, tokenCursor, false)
+        return .failure
     }
     tokenCursorCopy += 1
 
-    let statement = InsertStatement(table, expressions!)
-    return (statement, tokenCursorCopy, true)
+    let statement = InsertStatement(table, expressions)
+    return .success(tokenCursorCopy, .insert(statement))
 }
+
+enum ParseResult {
+    case failure
+    case success(Int, Statement)
+}
+
+func parseStatement(_ tokens: [Token], _ cursor: Int) -> ParseResult {
+    let parseHelpers = [
+        parseCreateStatement,
+        parseInsertStatement,
+        parseSelectStatement,
+    ]
+    for helper in parseHelpers {
+        switch helper(tokens, cursor) {
+        case .success(let cursor, let statement):
+            return .success(cursor, statement)
+        default:
+            continue
+        }
+    }
+
+    return .failure
+}
+
+// TODO: Need outermost parse function which
+//
+// * accounts for delimiting semicolons
+// * assembles and returns a set of Statements

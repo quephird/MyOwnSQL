@@ -66,7 +66,7 @@ struct Token: Equatable {
     var location: Location
 }
 
-struct Cursor {
+struct Cursor: Equatable {
     var pointer: String.Index
     var location: Location
 }

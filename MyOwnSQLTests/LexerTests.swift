@@ -18,9 +18,12 @@ class LexerTests: XCTestCase {
             ("'I''m working'", "I''m working"),
         ] {
             let cursor = Cursor(pointer: testSource.startIndex, location: location)
-            let (actualToken, _, actualParsed) = lexString(testSource, cursor)
-            XCTAssertTrue(actualParsed)
-            XCTAssertEqual(actualToken!.kind, .string(expectedTokenValue))
+            let result = lexString(testSource, cursor)
+            guard case .success(_, let token?) = result else {
+                XCTFail("Lexing failed unexpectedly")
+                return
+            }
+            XCTAssertEqual(token.kind, .string(expectedTokenValue))
         }
     }
 
@@ -30,9 +33,8 @@ class LexerTests: XCTestCase {
         for testSource in ["'", "", "foo", " 'foo'", "'foo     "] {
             let cursor = Cursor(pointer: testSource.startIndex, location: location)
 
-            let (actualToken, _, actualParsed) = lexString(testSource, cursor)
-            XCTAssertFalse(actualParsed)
-            XCTAssertNil(actualToken)
+            let result = lexString(testSource, cursor)
+            XCTAssertEqual(result, .failure)
         }
     }
 
@@ -51,9 +53,12 @@ class LexerTests: XCTestCase {
         ] {
             let cursor = Cursor(pointer: testSource.startIndex, location: location)
 
-            let (actualToken, _, actualParsed) = lexNumeric(testSource, cursor)
-            XCTAssertTrue(actualParsed)
-            XCTAssertEqual(actualToken!.kind, .numeric(expectedTokenValue))
+            let result = lexNumeric(testSource, cursor)
+            guard case .success(_, let token?) = result else {
+                XCTFail("Lexing failed unexpectedly")
+                return
+            }
+            XCTAssertEqual(token.kind, .numeric(expectedTokenValue))
         }
     }
 
@@ -63,9 +68,8 @@ class LexerTests: XCTestCase {
         for testSource in ["'foo'", "1.23e", "123..456", "123ee456", "123ed456", "123e*4", "e123"] {
             let cursor = Cursor(pointer: testSource.startIndex, location: location)
 
-            let (actualToken, _, actualParsed) = lexNumeric(testSource, cursor)
-            XCTAssertFalse(actualParsed)
-            XCTAssertNil(actualToken)
+            let result = lexNumeric(testSource, cursor)
+            XCTAssertEqual(result, .failure)
         }
     }
 
@@ -75,9 +79,12 @@ class LexerTests: XCTestCase {
         let pointer = testSource.index(testSource.startIndex, offsetBy: 3)
         let cursor = Cursor(pointer: pointer, location: location)
 
-        let (actualToken, newCursor, actualParsed) = lexSymbol(testSource, cursor)
-        XCTAssertTrue(actualParsed)
-        XCTAssertNil(actualToken)
+        let result = lexSymbol(testSource, cursor)
+        guard case .success(let newCursor, let token) = result else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
+        XCTAssertNil(token)
         XCTAssertEqual(newCursor.location.line, 0)
         XCTAssertEqual(newCursor.location.column, 4)
     }
@@ -92,9 +99,12 @@ select * from bar;
         let newlineIndex = testSource.index(testSource.startIndex, offsetBy: 18)
         let cursor = Cursor(pointer: newlineIndex, location: location)
 
-        let (actualToken, newCursor, actualParsed) = lexSymbol(testSource, cursor)
-        XCTAssertTrue(actualParsed)
-        XCTAssertNil(actualToken)
+        let result = lexSymbol(testSource, cursor)
+        guard case .success(let newCursor, let token) = result else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
+        XCTAssertNil(token)
         XCTAssertEqual(newCursor.location.line, 1)
         XCTAssertEqual(newCursor.location.column, 0)
     }
@@ -109,9 +119,12 @@ select * from bar;
         ] {
             let cursor = Cursor(pointer: testSource.startIndex, location: location)
 
-            let (actualToken, _, actualParsed) = lexSymbol(testSource, cursor)
-            XCTAssertTrue(actualParsed)
-            XCTAssertEqual(actualToken!.kind, .symbol(Symbol(rawValue: expectedTokenValue)!))
+            let result = lexSymbol(testSource, cursor)
+            guard case .success(_, let token?) = result else {
+                XCTFail("Lexing failed unexpectedly")
+                return
+            }
+            XCTAssertEqual(token.kind, .symbol(Symbol(rawValue: expectedTokenValue)!))
         }
     }
 
@@ -125,10 +138,13 @@ select * from bar;
         ] {
             let cursor = Cursor(pointer: testSource.startIndex, location: location)
 
-            let (actualToken, newCursor, actualParsed) = lexKeyword(testSource, cursor)
-            XCTAssertTrue(actualParsed)
-            XCTAssertEqual(actualToken!.kind, .keyword(Keyword(rawValue: expectedTokenValue)!))
-            XCTAssertEqual(newCursor.location.column, cursor.location.column + actualToken!.kind.description.count)
+            let result = lexKeyword(testSource, cursor)
+            guard case .success(let newCursor, let token?) = result else {
+                XCTFail("Lexing failed unexpectedly")
+                return
+            }
+            XCTAssertEqual(token.kind, .keyword(Keyword(rawValue: expectedTokenValue)!))
+            XCTAssertEqual(newCursor.location.column, cursor.location.column + token.kind.description.count)
         }
     }
 
@@ -141,10 +157,13 @@ select * from bar;
         ] {
             let cursor = Cursor(pointer: testSource.startIndex, location: location)
 
-            let (actualToken, newCursor, actualParsed) = lexKeyword(testSource, cursor)
-            XCTAssertTrue(actualParsed)
-            XCTAssertEqual(actualToken!.kind, .boolean(expectedTokenValue))
-            XCTAssertEqual(newCursor.location.column, cursor.location.column + actualToken!.kind.description.count)
+            let result = lexKeyword(testSource, cursor)
+            guard case .success(let newCursor, let token?) = result else {
+                XCTFail("Lexing failed unexpectedly")
+                return
+            }
+            XCTAssertEqual(token.kind, .boolean(expectedTokenValue))
+            XCTAssertEqual(newCursor.location.column, cursor.location.column + token.kind.description.count)
         }
     }
 
@@ -154,9 +173,8 @@ select * from bar;
         for testSource in ["'foo'", "1.23e456", " select", "non-existent"] {
             let cursor = Cursor(pointer: testSource.startIndex, location: location)
 
-            let (actualToken, _, actualParsed) = lexKeyword(testSource, cursor)
-            XCTAssertFalse(actualParsed)
-            XCTAssertNil(actualToken)
+            let result = lexKeyword(testSource, cursor)
+            XCTAssertEqual(result, .failure)
         }
     }
 
@@ -171,9 +189,12 @@ select * from bar;
         ] {
             let cursor = Cursor(pointer: testSource.startIndex, location: location)
 
-            let (actualToken, _, actualParsed) = lexIdentifier(testSource, cursor)
-            XCTAssertTrue(actualParsed)
-            XCTAssertEqual(actualToken!.kind, .identifier(expectedTokenValue))
+            let result = lexIdentifier(testSource, cursor)
+            guard case .success(_, let token?) = result else {
+                XCTFail("Lexing failed unexpectedly")
+                return
+            }
+            XCTAssertEqual(token.kind, .identifier(expectedTokenValue))
         }
     }
 
@@ -183,9 +204,8 @@ select * from bar;
         for testSource in ["\"", "'foo'", "1.23e456", "$foo", "9foo", "_foo"] {
             let cursor = Cursor(pointer: testSource.startIndex, location: location)
 
-            let (actualToken, _, actualParsed) = lexIdentifier(testSource, cursor)
-            XCTAssertFalse(actualParsed)
-            XCTAssertNil(actualToken)
+            let result = lexIdentifier(testSource, cursor)
+            XCTAssertEqual(result, .failure)
         }
     }
 
@@ -194,7 +214,11 @@ select * from bar;
 SELECT 'x' FROM foo
 WHERE bar = 42;
 """
-        let (actualTokens, actualErrorMessage) = lex(source)
+        let result = lex(source)
+        guard case .success(let actualTokens) = result else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
 
         let expectedTokens = [
             Token(kind: .keyword(.select), location: Location(line: 0, column: 0)),
@@ -207,15 +231,18 @@ WHERE bar = 42;
             Token(kind: .numeric("42"), location: Location(line: 1, column: 12)),
             Token(kind: .symbol(.semicolon), location: Location(line: 1, column: 14)),
         ]
-        XCTAssertEqual(actualTokens!, expectedTokens)
-        XCTAssertNil(actualErrorMessage)
+        XCTAssertEqual(actualTokens, expectedTokens)
     }
 
     func testFailedLex() throws {
         let source = "SELECT 'foo FROM bar;"
-        let (actualTokens, actualErrorMessage) = lex(source)
-        XCTAssertNil(actualTokens)
+        let result = lex(source)
+        guard case .failure(let actualErrorMessage) = result else {
+            XCTFail("Lexing succeeded unexpectedly")
+            return
+        }
+
         let expectedErrorMessage = "Unable to lex token after select, at line 0, column 7"
-        XCTAssertEqual(actualErrorMessage!, expectedErrorMessage)
+        XCTAssertEqual(actualErrorMessage, expectedErrorMessage)
     }
 }
