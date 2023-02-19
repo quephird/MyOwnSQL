@@ -5,6 +5,13 @@
 //  Created by Danielle Kefford on 2/3/23.
 //
 
+// TODO: Consider parameterizing these enums using generics
+//
+// enum ParseHelperResult<T> {
+//     case failure
+//     case success(Int, T)
+// }
+
 enum ParseExpressionsResult {
     case failure
     case success(Int, [Expression])
@@ -209,12 +216,12 @@ func parseInsertStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
     return .success(tokenCursorCopy, .insert(statement))
 }
 
-enum ParseResult {
+enum ParseStatementResult {
     case failure
     case success(Int, Statement)
 }
 
-func parseStatement(_ tokens: [Token], _ cursor: Int) -> ParseResult {
+func parseStatement(_ tokens: [Token], _ cursor: Int) -> ParseStatementResult {
     let parseHelpers = [
         parseCreateStatement,
         parseInsertStatement,
@@ -236,3 +243,34 @@ func parseStatement(_ tokens: [Token], _ cursor: Int) -> ParseResult {
 //
 // * accounts for delimiting semicolons
 // * assembles and returns a set of Statements
+
+enum ParseResult {
+    case failure
+    case success([Statement])
+}
+
+// TODO: Need to think about how to improve error messaging
+func parse(_ source: String) -> ParseResult {
+    guard case .success(let tokens) = lex(source) else {
+        return .failure
+    }
+
+    var tokenCursor: Int = 0
+    var statements: [Statement] = []
+    while tokenCursor < tokens.count {
+        guard case .success(let newTokenCursor, let statement) = parseStatement(tokens, tokenCursor) else {
+            return .failure
+        }
+
+        tokenCursor = newTokenCursor
+        statements.append(statement)
+
+        // TODO: Need to make sure that we haven't run out of tokens!
+        if tokens[tokenCursor].kind != TokenKind.symbol(.semicolon) {
+            return .failure
+        }
+        tokenCursor += 1
+    }
+
+    return .success(statements)
+}

@@ -43,7 +43,7 @@ struct InsertStatement: Equatable {
     }
 }
 
-enum Statement {
+enum Statement: Equatable {
     case create(CreateStatement)
     case insert(InsertStatement)
     case select(SelectStatement)
