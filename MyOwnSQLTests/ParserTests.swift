@@ -92,4 +92,31 @@ class ParserTests: XCTestCase {
 
         XCTAssertEqual(cursor, 10)
     }
+
+    func testParse() throws {
+        let source = """
+create table foo (bar int);
+insert into foo values (42);
+select bar from foo;
+"""
+
+        guard case .success(let statements) = parse(source) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+        XCTAssertEqual(statements.count, 3)
+
+        guard case .create = statements[0] else {
+            XCTFail("Expected CREATE statement")
+            return
+        }
+        guard case .insert = statements[1] else {
+            XCTFail("Expected INSERT statement")
+            return
+        }
+        guard case .select = statements[2] else {
+            XCTFail("Expected SELECT statement")
+            return
+        }
+    }
 }
