@@ -94,25 +94,29 @@ class ParserTests: XCTestCase {
     }
 
     func testParse() throws {
-        let source = "SELECT 42, 'x', true, foo FROM bar;"
-        guard case .success(let actualStatements) = parse(source) else {
+        let source = """
+create table foo (bar int);
+insert into foo values (42);
+select bar from foo;
+"""
+
+        guard case .success(let statements) = parse(source) else {
             XCTFail("Parsing failed unexpectedly")
             return
         }
+        XCTAssertEqual(statements.count, 3)
 
-        let expectedStatements: [Statement] = [
-            .select(
-                SelectStatement(
-                    Token(kind: .identifier("bar"), location: Location(line: 0, column: 31)),
-                    [
-                        .literal(Token(kind: .numeric("42"), location: Location(line: 0, column: 7))),
-                        .literal(Token(kind: .string("x"), location: Location(line: 0, column: 11))),
-                        .literal(Token(kind: .boolean("true"), location: Location(line: 0, column: 16))),
-                        .literal(Token(kind: .identifier("foo"), location: Location(line: 0, column: 22))),
-                    ]
-                )
-            ),
-        ]
-        XCTAssertEqual(actualStatements, expectedStatements)
+        guard case .create = statements[0] else {
+            XCTFail("Expected CREATE statement")
+            return
+        }
+        guard case .insert = statements[1] else {
+            XCTFail("Expected INSERT statement")
+            return
+        }
+        guard case .select = statements[2] else {
+            XCTFail("Expected SELECT statement")
+            return
+        }
     }
 }

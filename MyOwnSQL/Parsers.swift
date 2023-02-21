@@ -5,6 +5,10 @@
 //  Created by Danielle Kefford on 2/3/23.
 //
 
+// TODO: Need to think about how to create helper function
+//       to check if we have run out of tokens _AND_
+//       if the next token matches the expected one
+
 enum ParseHelperResult<T> {
     case failure
     case success(Int, T)
@@ -29,16 +33,13 @@ func parseExpressions(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResul
         default:
             return .failure
         }
-
         // TODO: Need to check if we're out of tokens
         tokenCursorCopy += 1
 
-        let maybeCommaToken = tokens[tokenCursorCopy]
-        if maybeCommaToken.kind == TokenKind.symbol(.comma) {
-            tokenCursorCopy += 1
-        } else {
+        guard case .symbol(.comma) = tokens[tokenCursorCopy].kind else {
             break
         }
+        tokenCursorCopy += 1
     }
 
     return .success(tokenCursorCopy, expressions)
@@ -100,12 +101,10 @@ func parseColumns(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<[D
         columns.append(column)
         tokenCursorCopy += 1
 
-        let maybeCommaToken = tokens[tokenCursorCopy]
-        if maybeCommaToken.kind == TokenKind.symbol(.comma) {
-            tokenCursorCopy += 1
-        } else {
+        guard case .symbol(.comma) = tokens[tokenCursorCopy].kind else {
             break
         }
+        tokenCursorCopy += 1
     }
 
     // TODO: Need to check count of column definitions
@@ -114,7 +113,7 @@ func parseColumns(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<[D
 
 // For now, the structure of a supported CREATE TABLE statement is the following:
 //
-//     CREATE TABLE <table name> <one or more column definitions>
+//     CREATE TABLE <table name> (<one or more column definitions>)
 func parseCreateStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<Statement> {
     var tokenCursorCopy = tokenCursor
 
@@ -234,12 +233,10 @@ func parse(_ source: String) -> ParseResult {
         guard case .success(let newTokenCursor, let statement) = parseStatement(tokens, tokenCursor) else {
             return .failure
         }
-
         tokenCursor = newTokenCursor
         statements.append(statement)
 
-        // TODO: Need to make sure that we haven't run out of tokens!
-        if tokens[tokenCursor].kind != TokenKind.symbol(.semicolon) {
+        if tokenCursor >= tokens.count || tokens[tokenCursor].kind != TokenKind.symbol(.semicolon) {
             return .failure
         }
         tokenCursor += 1
