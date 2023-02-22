@@ -31,6 +31,25 @@ class ParserTests: XCTestCase {
         XCTAssertEqual(statement, expectedStatement)
     }
 
+    func testFailedParseOfSelectStatement() throws {
+        for source in [
+            "SELECT FROM bar",
+            "SELECT 42 foo",
+            "SELECT 42 FROM",
+            "SELECT 42 'forty-two' FROM foo",
+        ] {
+            guard case .success(let tokens) = lex(source) else {
+                XCTFail("Lexing failed unexpectedly")
+                return
+            }
+
+            guard case .failure = parseSelectStatement(tokens, 0) else {
+                XCTFail("Parsing succeeded unexpectedly")
+                return
+            }
+        }
+    }
+
     func testSuccessfulParseOfCreateStatement() throws {
         let source = "CREATE TABLE foo (bar int, baz text, quux boolean)"
         guard case .success(let tokens) = lex(source) else {
@@ -56,6 +75,26 @@ class ParserTests: XCTestCase {
         XCTAssertEqual(statement, expectedStatement)
     }
 
+    func testFailedParseOfCreateStatement() throws {
+        for source in [
+            "CREATE foo",
+            "CREATE TABLE foo",
+            "CREATE TABLE foo bar INT, baz TEXT",
+            "CREATE TABLE foo (bar INT baz TEXT)",
+            "CREATE TABLE foo (bar INT, baz TEXT",
+        ] {
+            guard case .success(let tokens) = lex(source) else {
+                XCTFail("Lexing failed unexpectedly")
+                return
+            }
+
+            guard case .failure = parseCreateStatement(tokens, 0) else {
+                XCTFail("Parsing succeeded unexpectedly")
+                return
+            }
+        }
+    }
+
     func testSuccessfulParseOfInsertStatement() throws {
         let source = "INSERT INTO foo VALUES (42, 'x', false)"
         guard case .success(let tokens) = lex(source) else {
@@ -76,6 +115,24 @@ class ParserTests: XCTestCase {
             ]
         )
         XCTAssertEqual(statement, expectedStatement)
+    }
+
+    func testFailedParseOfInsertStatement() throws {
+        for source in [
+            "INSERT foo VALUES (42, 'forty-two')",
+            "INSERT INTO foo (42, 'forty-two')",
+            "INSERT INTO foo VALUES 42, 'forty-two'",
+        ] {
+            guard case .success(let tokens) = lex(source) else {
+                XCTFail("Lexing failed unexpectedly")
+                return
+            }
+
+            guard case .failure = parseInsertStatement(tokens, 0) else {
+                XCTFail("Parsing succeeded unexpectedly")
+                return
+            }
+        }
     }
 
     func testParseStatement() throws {

@@ -37,7 +37,7 @@ func parseExpressions(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResul
         // TODO: Need to check if we're out of tokens
         tokenCursorCopy += 1
 
-        guard case .symbol(.comma) = tokens[tokenCursorCopy].kind else {
+        guard tokenCursorCopy < tokens.count, case .symbol(.comma) = tokens[tokenCursorCopy].kind else {
             break
         }
         tokenCursorCopy += 1
@@ -71,12 +71,12 @@ func parseSelectStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
         return .failure("Unexpected error occurred")
     }
 
-    if tokens[tokenCursorCopy].kind != TokenKind.keyword(.from) {
+    if tokenCursorCopy >= tokens.count || tokens[tokenCursorCopy].kind != TokenKind.keyword(.from) {
         return .failure("Missing FROM keyword")
     }
     tokenCursorCopy += 1
 
-    guard case .identifier = tokens[tokenCursorCopy].kind else {
+    guard tokenCursorCopy < tokens.count, case .identifier = tokens[tokenCursorCopy].kind else {
         return .failure("Missing table name")
     }
     let table = tokens[tokenCursorCopy]
@@ -111,7 +111,7 @@ func parseColumns(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<[D
         columns.append(column)
         tokenCursorCopy += 1
 
-        guard case .symbol(.comma) = tokens[tokenCursorCopy].kind else {
+        guard tokenCursorCopy < tokens.count, case .symbol(.comma) = tokens[tokenCursorCopy].kind else {
             break
         }
         tokenCursorCopy += 1
@@ -135,18 +135,18 @@ func parseCreateStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
     }
     tokenCursorCopy += 1
 
-    if tokens[tokenCursorCopy].kind != TokenKind.keyword(.table) {
+    if tokenCursorCopy >= tokens.count || tokens[tokenCursorCopy].kind != TokenKind.keyword(.table) {
         return .failure("Missing TABLE keyword")
     }
     tokenCursorCopy += 1
 
-    guard case .identifier = tokens[tokenCursorCopy].kind else {
+    guard tokenCursorCopy < tokens.count, case .identifier = tokens[tokenCursorCopy].kind else {
         return .failure("Missing table name")
     }
     let table = tokens[tokenCursorCopy]
     tokenCursorCopy += 1
 
-    if tokens[tokenCursorCopy].kind != TokenKind.symbol(.leftParenthesis) {
+    if tokenCursorCopy >= tokens.count || tokens[tokenCursorCopy].kind != TokenKind.symbol(.leftParenthesis) {
         return .failure("Missing left parenthesis")
     }
     tokenCursorCopy += 1
@@ -161,7 +161,7 @@ func parseCreateStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
         return .failure("Unexpected error occurred")
     }
 
-    if tokens[tokenCursorCopy].kind != TokenKind.symbol(.rightParenthesis) {
+    if tokenCursorCopy >= tokens.count || tokens[tokenCursorCopy].kind != TokenKind.symbol(.rightParenthesis) {
         return .failure("Missing right parenthesis")
     }
     tokenCursorCopy += 1
@@ -182,23 +182,23 @@ func parseInsertStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
     }
     tokenCursorCopy += 1
 
-    if tokens[tokenCursorCopy].kind != TokenKind.keyword(.into) {
+    if tokenCursorCopy >= tokens.count || tokens[tokenCursorCopy].kind != TokenKind.keyword(.into) {
         return .failure("Missing INTO keyword")
     }
     tokenCursorCopy += 1
 
-    guard case .identifier = tokens[tokenCursorCopy].kind else {
+    guard tokenCursorCopy < tokens.count, case .identifier = tokens[tokenCursorCopy].kind else {
         return .failure("Missing table name")
     }
     let table = tokens[tokenCursorCopy]
     tokenCursorCopy += 1
 
-    if tokens[tokenCursorCopy].kind != TokenKind.keyword(.values) {
+    if tokenCursorCopy >= tokens.count || tokens[tokenCursorCopy].kind != TokenKind.keyword(.values) {
         return .failure("Missing VALUES keyword")
     }
     tokenCursorCopy += 1
 
-    if tokens[tokenCursorCopy].kind != TokenKind.symbol(.leftParenthesis) {
+    if tokenCursorCopy >= tokens.count || tokens[tokenCursorCopy].kind != TokenKind.symbol(.leftParenthesis) {
         return .failure("Missing left parenthesis")
     }
     tokenCursorCopy += 1
@@ -213,7 +213,7 @@ func parseInsertStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
         return .failure("Unexpected error occurred")
     }
 
-    if tokens[tokenCursorCopy].kind != TokenKind.symbol(.rightParenthesis) {
+    if tokenCursorCopy >= tokens.count || tokens[tokenCursorCopy].kind != TokenKind.symbol(.rightParenthesis) {
         return .failure("Missing right parenthesis")
     }
     tokenCursorCopy += 1
@@ -243,28 +243,34 @@ func parseStatement(_ tokens: [Token], _ cursor: Int) -> ParseHelperResult<State
 }
 
 enum ParseResult {
-    case failure
+    case failure(String)
     case success([Statement])
 }
 
 func parse(_ source: String) -> ParseResult {
-    guard case .success(let tokens) = lex(source) else {
-        return .failure
+    var tokens: [Token]
+    switch lex(source) {
+    case .failure(let errorMessage):
+        return .failure(errorMessage)
+    case .success(let newTokens):
+        tokens = newTokens
     }
 
     var tokenCursor: Int = 0
     var statements: [Statement] = []
     while tokenCursor < tokens.count {
-        // TODO: Need to grab the error message upon failure
-
-        guard case .success(let newTokenCursor, let statement) = parseStatement(tokens, tokenCursor) else {
-            return .failure
+        switch parseStatement(tokens, tokenCursor) {
+        case .failure(let errorMessage):
+            return .failure(errorMessage)
+        case .success(let newTokenCursor, let newStatement):
+            tokenCursor = newTokenCursor
+            statements.append(newStatement)
+        default:
+            return .failure("Unsupported statement")
         }
-        tokenCursor = newTokenCursor
-        statements.append(statement)
 
         if tokenCursor >= tokens.count || tokens[tokenCursor].kind != TokenKind.symbol(.semicolon) {
-            return .failure
+            return .failure("Missing semicolon at end of statement")
         }
         tokenCursor += 1
     }
