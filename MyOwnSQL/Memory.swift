@@ -6,8 +6,8 @@
 //
 
 enum MemoryCell: Equatable {
-    case stringValue(String)
     case intValue(Int)
+    case textValue(String)
     case booleanValue(Bool)
 }
 
@@ -98,7 +98,7 @@ class MemoryBackend {
 func makeMemoryCell(_ token: Token) -> MemoryCell? {
     switch token.kind {
     case .string(let value):
-        return .stringValue(value)
+        return .textValue(value)
     case .numeric(let value):
         // TODO: Here is where we should endeavor to try
         //       to create a float value if we can't create
