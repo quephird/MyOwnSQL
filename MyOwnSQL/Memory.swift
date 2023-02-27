@@ -17,7 +17,27 @@ enum ColumnType {
     case boolean
 }
 
+struct Column {
+    var name: String
+    var type: ColumnType
+
+    init(_ name: String, _ type: ColumnType) {
+        self.name = name
+        self.type = type
+    }
+}
+struct ResultSet {
+    var columns: [Column]
+    var rows: [[MemoryCell]]
+
+    init(_ columns: [Column], _ rows: [[MemoryCell]]) {
+        self.columns = columns
+        self.rows = rows
+    }
+}
+
 class Table {
+    // TODO: Look into OrderedDictionary in swift-collections library
     var columnNames: [String]
     var columnTypes: [ColumnType]
     var data: [[MemoryCell]]
@@ -29,10 +49,20 @@ class Table {
     }
 }
 
+enum StatementResult {
+    case failure(String)
+    case inserted
+    case created
+    case selected(ResultSet)
+}
+
 class MemoryBackend {
     var tables: [String: Table] = [:]
 
-    func createTable(_ create: CreateStatement) {
+    // TODO: Need to think about the return type of these functions;
+    //       they should probably return an enum indicating success
+    //       or failure
+    func createTable(_ create: CreateStatement) -> StatementResult {
         var columnNames: [String] = []
         var columnTypes: [ColumnType] = []
         for case .column(let nameToken, let typeToken) in create.columns {
@@ -40,7 +70,7 @@ class MemoryBackend {
             case .identifier(let name):
                 columnNames.append(name)
             default:
-                fatalError("Invalid token for column name")
+                return .failure("Invalid token for column name")
             }
 
             switch typeToken.kind {
@@ -53,10 +83,10 @@ class MemoryBackend {
                 case .boolean:
                     columnTypes.append(.boolean)
                 default:
-                    fatalError("Invalid column type")
+                    return .failure("Invalid column type")
                 }
             default:
-                fatalError("Invalid token for column type")
+                return .failure("Invalid token for column type")
             }
         }
 
@@ -64,8 +94,9 @@ class MemoryBackend {
         case .identifier(let tableName):
             let newTable = Table(columnNames, columnTypes)
             self.tables[tableName] = newTable
+            return .created
         default:
-            fatalError("Invalid token for table name")
+            return .failure("Invalid token for table name")
         }
     }
 
@@ -92,6 +123,64 @@ class MemoryBackend {
         default:
             fatalError("Invalid token for table name")
         }
+    }
+
+    func selectTable(_ select: SelectStatement) -> ResultSet {
+        var columns: [Column] = []
+        var resultRows: [[MemoryCell]] = []
+
+        guard case .identifier(let tableName) = select.table.kind else {
+            fatalError("Invalid token for table name")
+        }
+        guard let table = self.tables[tableName] else {
+            fatalError("Table does not exist")
+        }
+
+        for tableRow in table.data {
+            var resultRow: [MemoryCell] = []
+
+            for (i, item) in select.items.enumerated() {
+                switch item {
+                case .literal(let token):
+                    var newColumn: Column
+                    switch token.kind {
+                    case .boolean:
+                        newColumn = Column("col_\(i)", .boolean)
+                        columns.append(newColumn)
+                        resultRow.append(makeMemoryCell(token)!)
+                    case .numeric:
+                        newColumn = Column("col_\(i)", .int)
+                        columns.append(newColumn)
+                        resultRow.append(makeMemoryCell(token)!)
+                    case .string:
+                        newColumn = Column("col_\(i)", .text)
+                        columns.append(newColumn)
+                        resultRow.append(makeMemoryCell(token)!)
+                    case .identifier(let requestedColumnName):
+                        var columnFound = false
+
+                        for (i, columnName) in table.columnNames.enumerated() {
+                            if requestedColumnName == columnName {
+                                newColumn = Column(requestedColumnName, table.columnTypes[i])
+                                columns.append(newColumn)
+                                resultRow.append(tableRow[i])
+                                columnFound = true
+                                break
+                            }
+                        }
+
+                        if columnFound == false {
+                            fatalError("Column not found")
+                        }
+                    default:
+                        fatalError("Unable to handle this kind of token")
+                    }
+                }
+            }
+
+            resultRows.append(resultRow)
+        }
+        return ResultSet(columns, resultRows)
     }
 }
 
