@@ -68,6 +68,30 @@ class MemoryTests: XCTestCase {
         XCTAssertEqual(actualDress, expectedDress)
     }
 
+    func testInsertFailsForNonexistentTable() throws {
+        // Create table manually first...
+        let columnNames = ["id", "description", "is_in_season"]
+        let columnTypes: [ColumnType] = [.int, .text, .boolean]
+        let table = Table(columnNames, columnTypes)
+        let database = MemoryBackend()
+        database.tables = ["dresses": table]
+
+        // ... and _now_ insert the row from an actual statement...
+        let source = "INSERT INTO does_not_exist VALUES (42);"
+        guard case .success(let statements) = parse(source) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+        guard case .insert(let statement) = statements[0] else {
+            XCTFail("Unexpected statement type encountered")
+            return
+        }
+
+        XCTAssertThrowsError(try database.insertTable(statement)) { error in
+            XCTAssertEqual(error as! StatementError, .tableDoesNotExist)
+        }
+    }
+
     func testSelectLiteralsStatement() throws {
         // Create table manually first...
         let columnNames = ["id", "description", "is_in_season"]
@@ -156,5 +180,51 @@ class MemoryTests: XCTestCase {
         ]
         let actualRow = resultSet.rows[0]
         XCTAssertEqual(actualRow, expectedRow)
+    }
+
+    func testSelectFailsForNonexistentTable() throws {
+        // Create table manually first...
+        let columnNames = ["id", "description", "is_in_season"]
+        let columnTypes: [ColumnType] = [.int, .text, .boolean]
+        let table = Table(columnNames, columnTypes)
+        let database = MemoryBackend()
+        database.tables = ["dresses": table]
+
+        let source = "SELECT 42 FROM does_not_exist;"
+        guard case .success(let statements) = parse(source) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+        guard case .select(let statement) = statements[0] else {
+            XCTFail("Unexpected statement type encountered")
+            return
+        }
+
+        XCTAssertThrowsError(try database.selectTable(statement)) { error in
+            XCTAssertEqual(error as! StatementError, .tableDoesNotExist)
+        }
+    }
+
+    func testSelectFailsForNonexistentColumn() throws {
+        // Create table manually first...
+        let columnNames = ["id", "description", "is_in_season"]
+        let columnTypes: [ColumnType] = [.int, .text, .boolean]
+        let table = Table(columnNames, columnTypes)
+        let database = MemoryBackend()
+        database.tables = ["dresses": table]
+
+        let source = "SELECT does_not_exist FROM dresses;"
+        guard case .success(let statements) = parse(source) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+        guard case .select(let statement) = statements[0] else {
+            XCTFail("Unexpected statement type encountered")
+            return
+        }
+
+        XCTAssertThrowsError(try database.selectTable(statement)) { error in
+            XCTAssertEqual(error as! StatementError, .columnDoesNotExist)
+        }
     }
 }

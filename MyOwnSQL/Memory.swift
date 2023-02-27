@@ -49,16 +49,16 @@ class Table {
     }
 }
 
-enum StatementError: Error {
+enum StatementError: Error, Equatable {
+    case unsupportedColumnType
+    case tableDoesNotExist
+    case columnDoesNotExist
     case misc(String)
 }
 
 class MemoryBackend {
     var tables: [String: Table] = [:]
 
-    // TODO: Need to think about the return type of these functions;
-    //       they should probably return an enum indicating success
-    //       or failure
     func createTable(_ create: CreateStatement) throws {
         var columnNames: [String] = []
         var columnTypes: [ColumnType] = []
@@ -116,7 +116,7 @@ class MemoryBackend {
                 table.data.append(newRow)
                 return
             } else {
-                throw StatementError.misc("Table does not exist")
+                throw StatementError.tableDoesNotExist
             }
         default:
             throw StatementError.misc("Invalid token for table name")
@@ -131,7 +131,18 @@ class MemoryBackend {
             throw StatementError.misc("Invalid token for table name")
         }
         guard let table = self.tables[tableName] else {
-            throw StatementError.misc("Table does not exist")
+            throw StatementError.tableDoesNotExist
+        }
+        // TODO: Think about how to avoid iterating through selected items twice
+        for case .literal(let token) in select.items {
+            switch token.kind {
+            case .identifier(let selectedColumnName):
+                if !table.columnNames.contains(selectedColumnName) {
+                    throw StatementError.columnDoesNotExist
+                }
+            default:
+                continue
+            }
         }
 
         for tableRow in table.data {
@@ -155,20 +166,13 @@ class MemoryBackend {
                         columns.append(newColumn)
                         resultRow.append(makeMemoryCell(token)!)
                     case .identifier(let requestedColumnName):
-                        var columnFound = false
-
                         for (i, columnName) in table.columnNames.enumerated() {
                             if requestedColumnName == columnName {
                                 newColumn = Column(requestedColumnName, table.columnTypes[i])
                                 columns.append(newColumn)
                                 resultRow.append(tableRow[i])
-                                columnFound = true
                                 break
                             }
-                        }
-
-                        if columnFound == false {
-                            throw StatementError.misc("Column not found")
                         }
                     default:
                         throw StatementError.misc("Unable to handle this kind of token")
