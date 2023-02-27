@@ -20,10 +20,7 @@ class MemoryTests: XCTestCase {
         }
 
         let database = MemoryBackend()
-        guard case .created = database.createTable(statement) else {
-            XCTFail("Table not created unexpectedly")
-            return
-        }
+        XCTAssertNoThrow(try database.createTable(statement))
 
         XCTAssertEqual(database.tables.count, 1)
 
@@ -56,10 +53,7 @@ class MemoryTests: XCTestCase {
             return
         }
 
-        guard case .inserted = database.insertTable(statement) else {
-            XCTFail("Insert statement failed unexpectedly")
-            return
-        }
+        XCTAssertNoThrow(try database.insertTable(statement))
 
         let dressesTable = database.tables["dresses"]!
         let dresses = dressesTable.data
@@ -101,10 +95,7 @@ class MemoryTests: XCTestCase {
             XCTFail("Unexpected statement type encountered")
             return
         }
-        guard case .selected(let resultSet) = database.selectTable(statement) else {
-            XCTFail("SELECT statement failed unexpectedly")
-            return
-        }
+        let resultSet = try database.selectTable(statement)
 
         let expectedColumnNames = ["col_0", "col_1", "col_2"]
         let actualColumnNames = resultSet.columns.map { column in
@@ -149,10 +140,7 @@ class MemoryTests: XCTestCase {
             XCTFail("Unexpected statement type encountered")
             return
         }
-        guard case .selected(let resultSet) = database.selectTable(statement) else {
-            XCTFail("SELECT statement failed unexpectedly")
-            return
-        }
+        let resultSet = try database.selectTable(statement)
 
         let expectedColumnNames = ["id", "description", "is_in_season"]
         let actualColumnNames = resultSet.columns.map { column in

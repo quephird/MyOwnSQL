@@ -49,11 +49,8 @@ class Table {
     }
 }
 
-enum StatementResult {
-    case failure(String)
-    case inserted
-    case created
-    case selected(ResultSet)
+enum StatementError: Error {
+    case misc(String)
 }
 
 class MemoryBackend {
@@ -62,7 +59,7 @@ class MemoryBackend {
     // TODO: Need to think about the return type of these functions;
     //       they should probably return an enum indicating success
     //       or failure
-    func createTable(_ create: CreateStatement) -> StatementResult {
+    func createTable(_ create: CreateStatement) throws {
         var columnNames: [String] = []
         var columnTypes: [ColumnType] = []
         for case .column(let nameToken, let typeToken) in create.columns {
@@ -70,7 +67,7 @@ class MemoryBackend {
             case .identifier(let name):
                 columnNames.append(name)
             default:
-                return .failure("Invalid token for column name")
+                throw StatementError.misc("Invalid token for column name")
             }
 
             switch typeToken.kind {
@@ -83,10 +80,10 @@ class MemoryBackend {
                 case .boolean:
                     columnTypes.append(.boolean)
                 default:
-                    return .failure("Invalid column type")
+                    throw StatementError.misc("Invalid column type")
                 }
             default:
-                return .failure("Invalid token for column type")
+                throw StatementError.misc("Invalid token for column type")
             }
         }
 
@@ -94,13 +91,13 @@ class MemoryBackend {
         case .identifier(let tableName):
             let newTable = Table(columnNames, columnTypes)
             self.tables[tableName] = newTable
-            return .created
+            return
         default:
-            return .failure("Invalid token for table name")
+            throw StatementError.misc("Invalid token for table name")
         }
     }
 
-    func insertTable(_ insert: InsertStatement) -> StatementResult {
+    func insertTable(_ insert: InsertStatement) throws {
         switch insert.table.kind {
         case .identifier(let tableName):
             if let table = self.tables[tableName] {
@@ -111,30 +108,30 @@ class MemoryBackend {
                         if let newCell = makeMemoryCell(token) {
                             newRow.append(newCell)
                         } else {
-                            return .failure("Unable to create cell value from token")
+                            throw StatementError.misc("Unable to create cell value from token")
                         }
                     }
                 }
 
                 table.data.append(newRow)
-                return .inserted
+                return
             } else {
-                return .failure("Table does not exist")
+                throw StatementError.misc("Table does not exist")
             }
         default:
-            return .failure("Invalid token for table name")
+            throw StatementError.misc("Invalid token for table name")
         }
     }
 
-    func selectTable(_ select: SelectStatement) -> StatementResult {
+    func selectTable(_ select: SelectStatement) throws -> ResultSet {
         var columns: [Column] = []
         var resultRows: [[MemoryCell]] = []
 
         guard case .identifier(let tableName) = select.table.kind else {
-            return .failure("Invalid token for table name")
+            throw StatementError.misc("Invalid token for table name")
         }
         guard let table = self.tables[tableName] else {
-            return .failure("Table does not exist")
+            throw StatementError.misc("Table does not exist")
         }
 
         for tableRow in table.data {
@@ -171,17 +168,17 @@ class MemoryBackend {
                         }
 
                         if columnFound == false {
-                            return .failure("Column not found")
+                            throw StatementError.misc("Column not found")
                         }
                     default:
-                        return .failure("Unable to handle this kind of token")
+                        throw StatementError.misc("Unable to handle this kind of token")
                     }
                 }
             }
 
             resultRows.append(resultRow)
         }
-        return .selected(ResultSet(columns, resultRows))
+        return ResultSet(columns, resultRows)
     }
 }
 
@@ -196,7 +193,7 @@ func makeMemoryCell(_ token: Token) -> MemoryCell? {
         if let value = Int(value) {
             return .intValue(value)
         } else {
-            // TODO: Use fatalError() here for now
+            // TODO: What should this return to indicate a problem?
             return nil
         }
     case .boolean(let value):
