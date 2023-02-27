@@ -100,7 +100,7 @@ class MemoryBackend {
         }
     }
 
-    func insertTable(_ insert: InsertStatement) {
+    func insertTable(_ insert: InsertStatement) -> StatementResult {
         switch insert.table.kind {
         case .identifier(let tableName):
             if let table = self.tables[tableName] {
@@ -111,29 +111,30 @@ class MemoryBackend {
                         if let newCell = makeMemoryCell(token) {
                             newRow.append(newCell)
                         } else {
-                            fatalError("Unable to create cell value from token")
+                            return .failure("Unable to create cell value from token")
                         }
                     }
                 }
 
                 table.data.append(newRow)
+                return .inserted
             } else {
-                fatalError("Table does not exist")
+                return .failure("Table does not exist")
             }
         default:
-            fatalError("Invalid token for table name")
+            return .failure("Invalid token for table name")
         }
     }
 
-    func selectTable(_ select: SelectStatement) -> ResultSet {
+    func selectTable(_ select: SelectStatement) -> StatementResult {
         var columns: [Column] = []
         var resultRows: [[MemoryCell]] = []
 
         guard case .identifier(let tableName) = select.table.kind else {
-            fatalError("Invalid token for table name")
+            return .failure("Invalid token for table name")
         }
         guard let table = self.tables[tableName] else {
-            fatalError("Table does not exist")
+            return .failure("Table does not exist")
         }
 
         for tableRow in table.data {
@@ -170,17 +171,17 @@ class MemoryBackend {
                         }
 
                         if columnFound == false {
-                            fatalError("Column not found")
+                            return .failure("Column not found")
                         }
                     default:
-                        fatalError("Unable to handle this kind of token")
+                        return .failure("Unable to handle this kind of token")
                     }
                 }
             }
 
             resultRows.append(resultRow)
         }
-        return ResultSet(columns, resultRows)
+        return .selected(ResultSet(columns, resultRows))
     }
 }
 
