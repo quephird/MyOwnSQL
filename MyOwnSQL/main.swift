@@ -65,31 +65,37 @@ func handleSelectTable(_ statement: SelectStatement) {
         let results = try database.selectTable(statement)
         if results.rows.isEmpty {
             print("No rows selected")
-        } else {
-            var columnHeader = ""
-            for column in results.columns {
-                columnHeader.append("| \(column.name) ")
-            }
-            columnHeader.append("|")
-            print(columnHeader)
-            let separator = String(repeating: "=", count: columnHeader.count)
-            print(separator)
+            return
+        }
 
-            for row in results.rows {
-                var rowLine = ""
-                for columnValue in row {
-                    switch columnValue {
-                    case .intValue(let integer):
-                        rowLine.append("| \(integer) ")
-                    case .textValue(let string):
-                        rowLine.append("| \(string) ")
-                    case .booleanValue(let boolean):
-                        rowLine.append("| \(boolean) ")
-                    }
+        var columnHeader = ""
+        for column in results.columns {
+            columnHeader.append("| \(column.name) ")
+        }
+        columnHeader.append("|")
+        print(columnHeader)
+        let separator = String(repeating: "=", count: columnHeader.count)
+        print(separator)
+
+        for row in results.rows {
+            var rowLine = ""
+            for (i, columnValue) in row.enumerated() {
+                let columnWidth = results.columns[i].name.count
+                var printedValue: String
+                switch columnValue {
+                case .intValue(let integer):
+                    printedValue = String(integer)
+                case .textValue(let string):
+                    printedValue = string
+                case .booleanValue(let boolean):
+                    printedValue = String(boolean)
                 }
-                rowLine.append("|")
-                print(rowLine)
+                rowLine.append("| ")
+                rowLine.append(printedValue.padding(toLength: columnWidth, withPad: " ", startingAt: 0))
+                rowLine.append(" ")
             }
+            rowLine.append("|")
+            print(rowLine)
         }
     } catch StatementError.tableDoesNotExist {
         print("Table does not exist")

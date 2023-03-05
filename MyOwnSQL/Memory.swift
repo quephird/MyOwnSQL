@@ -60,6 +60,7 @@ class MemoryBackend {
     var tables: [String: Table] = [:]
 
     func createTable(_ create: CreateStatement) throws {
+        // TODO: Whoops! You need to check to see if the table already exists!!!
         var columnNames: [String] = []
         var columnTypes: [ColumnType] = []
         for case .column(let nameToken, let typeToken) in create.columns {
