@@ -68,9 +68,32 @@ func handleSelectTable(_ statement: SelectStatement) {
             return
         }
 
-        var columnHeader = ""
+        var columnWidths: [Int] = []
         for column in results.columns {
-            columnHeader.append("| \(column.name) ")
+            columnWidths.append(column.name.count)
+        }
+        for row in results.rows {
+            for (i, column) in row.enumerated() {
+                var printedValue: String
+                switch column {
+                case .intValue(let integer):
+                    printedValue = String(integer)
+                case .textValue(let string):
+                    printedValue = string
+                case .booleanValue(let boolean):
+                    printedValue = String(boolean)
+                }
+                if printedValue.count > columnWidths[i] {
+                    columnWidths[i] = printedValue.count
+                }
+            }
+        }
+
+        var columnHeader = ""
+        for (i, column) in results.columns.enumerated() {
+            columnHeader.append("| ")
+            columnHeader.append(column.name.padding(toLength: columnWidths[i], withPad: " ", startingAt: 0))
+            columnHeader.append(" ")
         }
         columnHeader.append("|")
         print(columnHeader)
@@ -80,7 +103,6 @@ func handleSelectTable(_ statement: SelectStatement) {
         for row in results.rows {
             var rowLine = ""
             for (i, columnValue) in row.enumerated() {
-                let columnWidth = results.columns[i].name.count
                 var printedValue: String
                 switch columnValue {
                 case .intValue(let integer):
@@ -91,7 +113,7 @@ func handleSelectTable(_ statement: SelectStatement) {
                     printedValue = String(boolean)
                 }
                 rowLine.append("| ")
-                rowLine.append(printedValue.padding(toLength: columnWidth, withPad: " ", startingAt: 0))
+                rowLine.append(printedValue.padding(toLength: columnWidths[i], withPad: " ", startingAt: 0))
                 rowLine.append(" ")
             }
             rowLine.append("|")
