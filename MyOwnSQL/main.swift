@@ -68,10 +68,14 @@ func handleSelectTable(_ statement: SelectStatement) {
             return
         }
 
+        // First we need to compute the column widths, starting with the
+        // lengths of the column names themselves...
         var columnWidths: [Int] = []
         for column in results.columns {
             columnWidths.append(column.name.count)
         }
+        // Next we need to see if any of the column values themselves
+        // are wider than their respective column names...
         for row in results.rows {
             for (i, column) in row.enumerated() {
                 var printedValue: String
@@ -89,6 +93,7 @@ func handleSelectTable(_ statement: SelectStatement) {
             }
         }
 
+        // Now we can finally print the column header
         var columnHeader = ""
         for (i, column) in results.columns.enumerated() {
             columnHeader.append("| ")
@@ -100,6 +105,8 @@ func handleSelectTable(_ statement: SelectStatement) {
         let separator = String(repeating: "=", count: columnHeader.count)
         print(separator)
 
+        // ... and then we can print the result set, with padding
+        // to insure that all columns are aligned.
         for row in results.rows {
             var rowLine = ""
             for (i, columnValue) in row.enumerated() {
