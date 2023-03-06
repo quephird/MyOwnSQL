@@ -40,8 +40,6 @@ func handleCreateTable(_ statement: CreateStatement) {
     do {
         try database.createTable(statement)
         print("Table created!")
-    } catch StatementError.misc(let errorMessage) {
-        print(errorMessage)
     } catch {
         print(error.localizedDescription)
     }
@@ -51,10 +49,6 @@ func handleInsertTable(_ statement: InsertStatement) {
     do {
         try database.insertTable(statement)
         print("One row inserted!")
-    } catch StatementError.tableDoesNotExist {
-        print("Table does not exist")
-    } catch StatementError.misc(let errorMessage) {
-        print(errorMessage)
     } catch {
         print(error.localizedDescription)
     }
@@ -126,12 +120,6 @@ func handleSelectTable(_ statement: SelectStatement) {
             rowLine.append("|")
             print(rowLine)
         }
-    } catch StatementError.tableDoesNotExist {
-        print("Table does not exist")
-    } catch StatementError.columnDoesNotExist {
-        print("Column does not exist")
-    } catch StatementError.misc(let errorMessage) {
-        print(errorMessage)
     } catch {
         print(error.localizedDescription)
     }

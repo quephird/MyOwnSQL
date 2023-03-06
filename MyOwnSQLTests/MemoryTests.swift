@@ -34,6 +34,30 @@ class MemoryTests: XCTestCase {
         XCTAssertEqual(actualColumnTypes, expectedColumnTypes)
     }
 
+    func testCreateFailsForExistentTable() throws {
+        // Create table manually first...
+        let columnNames = ["id", "description", "is_in_season"]
+        let columnTypes: [ColumnType] = [.int, .text, .boolean]
+        let table = Table(columnNames, columnTypes)
+        let database = MemoryBackend()
+        database.tables = ["dresses": table]
+
+        // ... and now try to create a table with the same name from an actual statement...
+        let source = "CREATE TABLE dresses (id INT);"
+        guard case .success(let statements) = parse(source) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+        guard case .create(let statement) = statements[0] else {
+            XCTFail("Unexpected statement type encountered")
+            return
+        }
+
+        XCTAssertThrowsError(try database.createTable(statement)) { error in
+            XCTAssertEqual(error as! StatementError, .tableAlreadyExists)
+        }
+    }
+
     func testSuccessfulExecutionOfInsertStatement() throws {
         // Create table manually first...
         let columnNames = ["id", "description", "is_in_season"]

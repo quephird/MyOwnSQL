@@ -5,6 +5,8 @@
 //  Created by Danielle Kefford on 2/7/23.
 //
 
+import Foundation
+
 enum MemoryCell: Equatable {
     case intValue(Int)
     case textValue(String)
@@ -49,18 +51,40 @@ class Table {
     }
 }
 
-enum StatementError: Error, Equatable {
+enum StatementError: Error, Equatable, LocalizedError {
     case unsupportedColumnType
+    case tableAlreadyExists
     case tableDoesNotExist
     case columnDoesNotExist
     case misc(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .unsupportedColumnType:
+            return "Unsupported column type"
+        case .tableAlreadyExists:
+            return "Table already exists"
+        case .tableDoesNotExist:
+            return "Table does not exist"
+        case .columnDoesNotExist:
+            return "Column does not exist"
+        case .misc(let message):
+            return message
+        }
+    }
 }
 
 class MemoryBackend {
     var tables: [String: Table] = [:]
 
     func createTable(_ create: CreateStatement) throws {
-        // TODO: Whoops! You need to check to see if the table already exists!!!
+        guard case .identifier(let tableName) = create.table.kind else {
+            throw StatementError.misc("Invalid token for table name")
+        }
+        if self.tables[tableName] != nil {
+            throw StatementError.tableAlreadyExists
+        }
+
         var columnNames: [String] = []
         var columnTypes: [ColumnType] = []
         for case .column(let nameToken, let typeToken) in create.columns {
@@ -88,14 +112,8 @@ class MemoryBackend {
             }
         }
 
-        switch create.table.kind {
-        case .identifier(let tableName):
-            let newTable = Table(columnNames, columnTypes)
-            self.tables[tableName] = newTable
-            return
-        default:
-            throw StatementError.misc("Invalid token for table name")
-        }
+        let newTable = Table(columnNames, columnTypes)
+        self.tables[tableName] = newTable
     }
 
     func insertTable(_ insert: InsertStatement) throws {
