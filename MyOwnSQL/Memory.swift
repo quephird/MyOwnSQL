@@ -60,6 +60,7 @@ class MemoryBackend {
     var tables: [String: Table] = [:]
 
     func createTable(_ create: CreateStatement) throws {
+        // TODO: Whoops! You need to check to see if the table already exists!!!
         var columnNames: [String] = []
         var columnTypes: [ColumnType] = []
         for case .column(let nameToken, let typeToken) in create.columns {
@@ -145,31 +146,38 @@ class MemoryBackend {
             }
         }
 
-        for tableRow in table.data {
+        for (rowNumber, tableRow) in table.data.enumerated() {
             var resultRow: [MemoryCell] = []
 
             for (i, item) in select.items.enumerated() {
                 switch item {
                 case .literal(let token):
-                    var newColumn: Column
                     switch token.kind {
                     case .boolean:
-                        newColumn = Column("col_\(i)", .boolean)
-                        columns.append(newColumn)
+                        if rowNumber == 0 {
+                            let newColumn = Column("col_\(i)", .boolean)
+                            columns.append(newColumn)
+                        }
                         resultRow.append(makeMemoryCell(token)!)
                     case .numeric:
-                        newColumn = Column("col_\(i)", .int)
-                        columns.append(newColumn)
+                        if rowNumber == 0 {
+                            let newColumn = Column("col_\(i)", .int)
+                            columns.append(newColumn)
+                        }
                         resultRow.append(makeMemoryCell(token)!)
                     case .string:
-                        newColumn = Column("col_\(i)", .text)
-                        columns.append(newColumn)
+                        if rowNumber == 0 {
+                            let newColumn = Column("col_\(i)", .text)
+                            columns.append(newColumn)
+                        }
                         resultRow.append(makeMemoryCell(token)!)
                     case .identifier(let requestedColumnName):
                         for (i, columnName) in table.columnNames.enumerated() {
                             if requestedColumnName == columnName {
-                                newColumn = Column(requestedColumnName, table.columnTypes[i])
-                                columns.append(newColumn)
+                                if rowNumber == 0 {
+                                    let newColumn = Column(requestedColumnName, table.columnTypes[i])
+                                    columns.append(newColumn)
+                                }
                                 resultRow.append(tableRow[i])
                                 break
                             }
