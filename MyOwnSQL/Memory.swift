@@ -5,8 +5,6 @@
 //  Created by Danielle Kefford on 2/7/23.
 //
 
-import Foundation
-
 enum MemoryCell: Equatable {
     case intValue(Int)
     case textValue(String)
@@ -48,29 +46,6 @@ class Table {
         self.columnNames = columnNames
         self.columnTypes = columnTypes
         self.data = []
-    }
-}
-
-enum StatementError: Error, Equatable, LocalizedError {
-    case unsupportedColumnType
-    case tableAlreadyExists
-    case tableDoesNotExist
-    case columnDoesNotExist
-    case misc(String)
-
-    var errorDescription: String? {
-        switch self {
-        case .unsupportedColumnType:
-            return "Unsupported column type"
-        case .tableAlreadyExists:
-            return "Table already exists"
-        case .tableDoesNotExist:
-            return "Table does not exist"
-        case .columnDoesNotExist:
-            return "Column does not exist"
-        case .misc(let message):
-            return message
-        }
     }
 }
 
@@ -120,6 +95,12 @@ class MemoryBackend {
         switch insert.table.kind {
         case .identifier(let tableName):
             if let table = self.tables[tableName] {
+                if insert.items.count < table.columnNames.count {
+                    throw StatementError.notEnoughValues
+                } else if insert.items.count > table.columnNames.count {
+                    throw StatementError.tooManyValues
+                }
+
                 var newRow: [MemoryCell] = []
                 for item in insert.items {
                     switch item {
