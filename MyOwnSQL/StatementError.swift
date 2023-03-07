@@ -9,9 +9,9 @@ import Foundation
 
 enum StatementError: Error, Equatable, LocalizedError {
     case unsupportedColumnType
-    case tableAlreadyExists
-    case tableDoesNotExist
-    case columnDoesNotExist
+    case tableAlreadyExists(String)
+    case tableDoesNotExist(String)
+    case columnDoesNotExist(String)
     case notEnoughValues
     case tooManyValues
     case misc(String)
@@ -20,12 +20,12 @@ enum StatementError: Error, Equatable, LocalizedError {
         switch self {
         case .unsupportedColumnType:
             return "Unsupported column type"
-        case .tableAlreadyExists:
-            return "Table already exists"
-        case .tableDoesNotExist:
-            return "Table does not exist"
-        case .columnDoesNotExist:
-            return "Column does not exist"
+        case .tableAlreadyExists(let tableName):
+            return "Table \(tableName) already exists"
+        case .tableDoesNotExist(let tableName):
+            return "Table \(tableName) does not exist"
+        case .columnDoesNotExist(let columnName):
+            return "Column \(columnName) does not exist"
         case .notEnoughValues:
             return "Not enough values"
         case .tooManyValues:

@@ -54,7 +54,7 @@ class MemoryTests: XCTestCase {
         }
 
         XCTAssertThrowsError(try database.createTable(statement)) { error in
-            XCTAssertEqual(error as! StatementError, .tableAlreadyExists)
+            XCTAssertEqual(error as! StatementError, .tableAlreadyExists("dresses"))
         }
     }
 
@@ -112,7 +112,7 @@ class MemoryTests: XCTestCase {
         }
 
         XCTAssertThrowsError(try database.insertTable(statement)) { error in
-            XCTAssertEqual(error as! StatementError, .tableDoesNotExist)
+            XCTAssertEqual(error as! StatementError, .tableDoesNotExist("does_not_exist"))
         }
     }
 
@@ -274,7 +274,7 @@ class MemoryTests: XCTestCase {
         }
 
         XCTAssertThrowsError(try database.selectTable(statement)) { error in
-            XCTAssertEqual(error as! StatementError, .tableDoesNotExist)
+            XCTAssertEqual(error as! StatementError, .tableDoesNotExist("does_not_exist"))
         }
     }
 
@@ -297,7 +297,7 @@ class MemoryTests: XCTestCase {
         }
 
         XCTAssertThrowsError(try database.selectTable(statement)) { error in
-            XCTAssertEqual(error as! StatementError, .columnDoesNotExist)
+            XCTAssertEqual(error as! StatementError, .columnDoesNotExist("does_not_exist"))
         }
     }
 }
