@@ -32,7 +32,7 @@ func parseExpressions(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResul
         //       for true and false keywords, and removing the
         //       boolean token type
         case .identifier, .string, .numeric, .boolean:
-            let expression = Expression.literal(maybeLiteralToken)
+            let expression = Expression.term(maybeLiteralToken)
             expressions.append(expression)
         default:
             return .failure("Literal expression not found")

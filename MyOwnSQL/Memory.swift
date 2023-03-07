@@ -117,18 +117,22 @@ class MemoryBackend {
     }
 
     func insertTable(_ insert: InsertStatement) throws {
+        // TODO: Need to check that the number of values is
+        //       the same as the number of columns in the target table.
         switch insert.table.kind {
         case .identifier(let tableName):
             if let table = self.tables[tableName] {
                 var newRow: [MemoryCell] = []
                 for item in insert.items {
                     switch item {
-                    case .literal(let token):
+                    case .term(let token):
                         if let newCell = makeMemoryCell(token) {
                             newRow.append(newCell)
                         } else {
                             throw StatementError.misc("Unable to create cell value from token")
                         }
+                    default:
+                        throw StatementError.misc("Unsupported expression")
                     }
                 }
 
@@ -153,7 +157,7 @@ class MemoryBackend {
             throw StatementError.tableDoesNotExist
         }
         // TODO: Think about how to avoid iterating through selected items twice
-        for case .literal(let token) in select.items {
+        for case .term(let token) in select.items {
             switch token.kind {
             case .identifier(let selectedColumnName):
                 if !table.columnNames.contains(selectedColumnName) {
@@ -169,7 +173,7 @@ class MemoryBackend {
 
             for (i, item) in select.items.enumerated() {
                 switch item {
-                case .literal(let token):
+                case .term(let token):
                     switch token.kind {
                     case .boolean:
                         if rowNumber == 0 {
@@ -203,6 +207,8 @@ class MemoryBackend {
                     default:
                         throw StatementError.misc("Unable to handle this kind of token")
                     }
+                default:
+                    throw StatementError.misc("Unsupported expression")
                 }
             }
 
