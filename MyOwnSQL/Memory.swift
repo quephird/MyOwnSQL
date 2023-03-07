@@ -57,7 +57,7 @@ class MemoryBackend {
             throw StatementError.misc("Invalid token for table name")
         }
         if self.tables[tableName] != nil {
-            throw StatementError.tableAlreadyExists
+            throw StatementError.tableAlreadyExists(tableName)
         }
 
         var columnNames: [String] = []
@@ -116,7 +116,7 @@ class MemoryBackend {
                 table.data.append(newRow)
                 return
             } else {
-                throw StatementError.tableDoesNotExist
+                throw StatementError.tableDoesNotExist(tableName)
             }
         default:
             throw StatementError.misc("Invalid token for table name")
@@ -131,14 +131,14 @@ class MemoryBackend {
             throw StatementError.misc("Invalid token for table name")
         }
         guard let table = self.tables[tableName] else {
-            throw StatementError.tableDoesNotExist
+            throw StatementError.tableDoesNotExist(tableName)
         }
         // TODO: Think about how to avoid iterating through selected items twice
         for case .literal(let token) in select.items {
             switch token.kind {
             case .identifier(let selectedColumnName):
                 if !table.columnNames.contains(selectedColumnName) {
-                    throw StatementError.columnDoesNotExist
+                    throw StatementError.columnDoesNotExist(selectedColumnName)
                 }
             default:
                 continue
