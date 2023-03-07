@@ -116,6 +116,55 @@ class MemoryTests: XCTestCase {
         }
     }
 
+    func testInsertFailsForNotEnoughValues() throws {
+        // Create table manually first...
+        let columnNames = ["id", "description", "is_in_season"]
+        let columnTypes: [ColumnType] = [.int, .text, .boolean]
+        let table = Table(columnNames, columnTypes)
+        let database = MemoryBackend()
+        database.tables = ["dresses": table]
+
+        // ... and _now_ insert the row from an actual statement...
+        let source = "INSERT INTO dresses VALUES (42);"
+        guard case .success(let statements) = parse(source) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+        guard case .insert(let statement) = statements[0] else {
+            XCTFail("Unexpected statement type encountered")
+            return
+        }
+
+        XCTAssertThrowsError(try database.insertTable(statement)) { error in
+            XCTAssertEqual(error as! StatementError, .notEnoughValues)
+        }
+    }
+
+    func testInsertFailsForTooManyValues() throws {
+        // Create table manually first...
+        let columnNames = ["id", "description", "is_in_season"]
+        let columnTypes: [ColumnType] = [.int, .text, .boolean]
+        let table = Table(columnNames, columnTypes)
+        let database = MemoryBackend()
+        database.tables = ["dresses": table]
+
+        // ... and _now_ insert the row from an actual statement...
+        let source = "INSERT INTO dresses VALUES (1, 'Velvet dress', true, 'Bought at Goodwill');"
+        guard case .success(let statements) = parse(source) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+        guard case .insert(let statement) = statements[0] else {
+            XCTFail("Unexpected statement type encountered")
+            return
+        }
+
+        XCTAssertThrowsError(try database.insertTable(statement)) { error in
+            XCTAssertEqual(error as! StatementError, .tooManyValues)
+        }
+    }
+
+
     func testSelectLiteralsStatement() throws {
         // Create table manually first...
         let columnNames = ["id", "description", "is_in_season"]
