@@ -26,6 +26,7 @@ struct Column {
         self.type = type
     }
 }
+
 struct ResultSet {
     var columns: [Column]
     var rows: [[MemoryCell]]

@@ -15,35 +15,54 @@ enum ParseHelperResult<T> {
     case success(Int, T)
 }
 
-// We expect each item in the list of expressions to be in the form:
+// NOTA BENE: This function will eventually need to take another parameter
+//            denoting which tokens should be considered to delimit the expression,
+//            primarily because parseSelectItem and parseInsertValues share this
+//            function and those delimiting tokens differ between them, but also
+//            because when we tackle parsing of binary expressions, we will not
+//            necessarily know how many tokens comprise them. For now, we can get
+//            away with just looking at the one current token.
+func parseExpression(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<Expression> {
+    var tokenCursorCopy = tokenCursor
+    let maybeLiteralToken = tokens[tokenCursorCopy]
+
+    switch maybeLiteralToken.kind {
+    // TODO: Consider instead being able to handle tokens
+    //       for true and false keywords, and removing the
+    //       boolean token type
+    case .identifier, .string, .numeric, .boolean:
+        tokenCursorCopy += 1
+        return .success(tokenCursorCopy, Expression.literal(maybeLiteralToken))
+    default:
+        return .failure("Term expression not found")
+    }
+}
+
+// We expect each item in the list of select items to be in the form:
 //
-//     <column name> or <numeric value> or <string value>
+//     <expression>
 //
-// ... and to be delimited by a comma
+// ... OR
+//
+//     <expression> AS <identifier>
+//
+// ... and separated by a comma token
 func parseSelectItems(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<[SelectItem]> {
     var tokenCursorCopy = tokenCursor
     var items: [SelectItem] = []
 
     while tokenCursorCopy < tokens.count {
-        let maybeLiteralToken = tokens[tokenCursorCopy]
-
-        var item: SelectItem
-        switch maybeLiteralToken.kind {
-        // TODO: Consider instead being able to handle tokens
-        //       for true and false keywords, and removing the
-        //       boolean token type
-        case .identifier, .string, .numeric, .boolean:
-            item = SelectItem(Expression.literal(maybeLiteralToken))
-        default:
-            return .failure("Term expression not found")
+        guard case .success(let newTokenCursorCopy, let expression) = parseExpression(tokens, tokenCursorCopy) else {
+            return .failure("Expression expected but not found")
         }
-        tokenCursorCopy += 1
+        var item = SelectItem(expression)
+        tokenCursorCopy = newTokenCursorCopy
 
         if case .keyword(.as) = tokens[tokenCursorCopy].kind {
             tokenCursorCopy += 1
 
             guard case .identifier = tokens[tokenCursorCopy].kind else {
-                return .failure("Term expression not found")
+                return .failure("Identifier expected after AS keyword")
             }
             item.alias = tokens[tokenCursorCopy]
             tokenCursorCopy += 1
@@ -61,38 +80,6 @@ func parseSelectItems(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResul
         return .failure("At least one expression was expected")
     }
     return .success(tokenCursorCopy, items)
-}
-
-func parseExpressions(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<[Expression]> {
-    var tokenCursorCopy = tokenCursor
-    var expressions: [Expression] = []
-
-    while tokenCursorCopy < tokens.count {
-        let maybeLiteralToken = tokens[tokenCursorCopy]
-
-        switch maybeLiteralToken.kind {
-        // TODO: Consider instead being able to handle tokens
-        //       for true and false keywords, and removing the
-        //       boolean token type
-        case .identifier, .string, .numeric, .boolean:
-            let expression = Expression.literal(maybeLiteralToken)
-            expressions.append(expression)
-        default:
-            return .failure("Literal expression not found")
-        }
-        // TODO: Need to check if we're out of tokens
-        tokenCursorCopy += 1
-
-        guard tokenCursorCopy < tokens.count, case .symbol(.comma) = tokens[tokenCursorCopy].kind else {
-            break
-        }
-        tokenCursorCopy += 1
-    }
-
-    if expressions.isEmpty {
-        return .failure("At least one expression was expected")
-    }
-    return .success(tokenCursorCopy, expressions)
 }
 
 // For now, the structure of a supported SELECT statement is the following:
@@ -136,7 +123,7 @@ func parseSelectStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
 //
 //     <column name> <column type>
 //
-// ... and to be delimited by a comma
+// ... and separated by a comma
 func parseColumns(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<[Definition]> {
     var tokenCursorCopy = tokenCursor
     var columns: [Definition] = []
@@ -216,6 +203,35 @@ func parseCreateStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
     return .success(tokenCursorCopy, .create(statement))
 }
 
+// Ee expect each item in the list of insert values to be in the form:
+//
+//     <expression>
+//
+// ... and separated by a comma token. Unlike in parseSelectItems(),
+// aliases are not allowed.
+func parseInsertValues(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<[Expression]> {
+    var tokenCursorCopy = tokenCursor
+    var expressions: [Expression] = []
+
+    while tokenCursorCopy < tokens.count {
+        guard case .success(let newTokenCursorCopy, let expression) = parseExpression(tokens, tokenCursorCopy) else {
+            return .failure("Expression expected but not found")
+        }
+        expressions.append(expression)
+        tokenCursorCopy = newTokenCursorCopy
+
+        guard tokenCursorCopy < tokens.count, case .symbol(.comma) = tokens[tokenCursorCopy].kind else {
+            break
+        }
+        tokenCursorCopy += 1
+    }
+
+    if expressions.isEmpty {
+        return .failure("At least one expression was expected")
+    }
+    return .success(tokenCursorCopy, expressions)
+}
+
 // For now, the structure of a supported INSERT statement is the following:
 //
 //     INSERT INTO <table name> VALUES (<one or more expressions>)
@@ -249,7 +265,7 @@ func parseInsertStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
     }
     tokenCursorCopy += 1
 
-    switch parseExpressions(tokens, tokenCursorCopy) {
+    switch parseInsertValues(tokens, tokenCursorCopy) {
     case .failure(let errorMessage):
         return .failure(errorMessage)
     case .success(let newTokenCursor, let newExpressions):
