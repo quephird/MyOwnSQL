@@ -156,26 +156,42 @@ class MemoryBackend {
                     switch token.kind {
                     case .boolean:
                         if rowNumber == 0 {
-                            let newColumn = Column("col_\(i)", .boolean)
+                            var columnName = "col_\(i)"
+                            if item.alias != nil, case .identifier(let alias) = item.alias?.kind {
+                                columnName = alias
+                            }
+                            let newColumn = Column(columnName, .boolean)
                             columns.append(newColumn)
                         }
                         resultRow.append(makeMemoryCell(token)!)
                     case .numeric:
                         if rowNumber == 0 {
-                            let newColumn = Column("col_\(i)", .int)
+                            var columnName = "col_\(i)"
+                            if item.alias != nil, case .identifier(let alias) = item.alias?.kind {
+                                columnName = alias
+                            }
+                            let newColumn = Column(columnName, .int)
                             columns.append(newColumn)
                         }
                         resultRow.append(makeMemoryCell(token)!)
                     case .string:
                         if rowNumber == 0 {
-                            let newColumn = Column("col_\(i)", .text)
+                            var columnName = "col_\(i)"
+                            if item.alias != nil, case .identifier(let alias) = item.alias?.kind {
+                                columnName = alias
+                            }
+                            let newColumn = Column(columnName, .text)
                             columns.append(newColumn)
                         }
                         resultRow.append(makeMemoryCell(token)!)
-                    case .identifier(let requestedColumnName):
+                    case .identifier(var requestedColumnName):
                         for (i, columnName) in table.columnNames.enumerated() {
                             if requestedColumnName == columnName {
                                 if rowNumber == 0 {
+                                    if item.alias != nil, case .identifier(let alias) = item.alias?.kind {
+                                        requestedColumnName = alias
+                                    }
+
                                     let newColumn = Column(requestedColumnName, table.columnTypes[i])
                                     columns.append(newColumn)
                                 }
