@@ -26,6 +26,7 @@ struct Column {
         self.type = type
     }
 }
+
 struct ResultSet {
     var columns: [Column]
     var rows: [[MemoryCell]]
@@ -104,7 +105,7 @@ class MemoryBackend {
                 var newRow: [MemoryCell] = []
                 for item in insert.items {
                     switch item {
-                    case .literal(let token):
+                    case .term(let token):
                         if let newCell = makeMemoryCell(token) {
                             newRow.append(newCell)
                         } else {
@@ -134,14 +135,16 @@ class MemoryBackend {
             throw StatementError.tableDoesNotExist(tableName)
         }
         // TODO: Think about how to avoid iterating through selected items twice
-        for case .literal(let token) in select.items {
-            switch token.kind {
-            case .identifier(let selectedColumnName):
-                if !table.columnNames.contains(selectedColumnName) {
-                    throw StatementError.columnDoesNotExist(selectedColumnName)
+        for item in select.items {
+            if case .term(let token) = item.expression {
+                switch token.kind {
+                case .identifier(let selectedColumnName):
+                    if !table.columnNames.contains(selectedColumnName) {
+                        throw StatementError.columnDoesNotExist(selectedColumnName)
+                    }
+                default:
+                    continue
                 }
-            default:
-                continue
             }
         }
 
@@ -149,31 +152,47 @@ class MemoryBackend {
             var resultRow: [MemoryCell] = []
 
             for (i, item) in select.items.enumerated() {
-                switch item {
-                case .literal(let token):
+                switch item.expression {
+                case .term(let token):
                     switch token.kind {
                     case .boolean:
                         if rowNumber == 0 {
-                            let newColumn = Column("col_\(i)", .boolean)
+                            var columnName = "col_\(i)"
+                            if item.alias != nil, case .identifier(let alias) = item.alias?.kind {
+                                columnName = alias
+                            }
+                            let newColumn = Column(columnName, .boolean)
                             columns.append(newColumn)
                         }
                         resultRow.append(makeMemoryCell(token)!)
                     case .numeric:
                         if rowNumber == 0 {
-                            let newColumn = Column("col_\(i)", .int)
+                            var columnName = "col_\(i)"
+                            if item.alias != nil, case .identifier(let alias) = item.alias?.kind {
+                                columnName = alias
+                            }
+                            let newColumn = Column(columnName, .int)
                             columns.append(newColumn)
                         }
                         resultRow.append(makeMemoryCell(token)!)
                     case .string:
                         if rowNumber == 0 {
-                            let newColumn = Column("col_\(i)", .text)
+                            var columnName = "col_\(i)"
+                            if item.alias != nil, case .identifier(let alias) = item.alias?.kind {
+                                columnName = alias
+                            }
+                            let newColumn = Column(columnName, .text)
                             columns.append(newColumn)
                         }
                         resultRow.append(makeMemoryCell(token)!)
-                    case .identifier(let requestedColumnName):
+                    case .identifier(var requestedColumnName):
                         for (i, columnName) in table.columnNames.enumerated() {
                             if requestedColumnName == columnName {
                                 if rowNumber == 0 {
+                                    if item.alias != nil, case .identifier(let alias) = item.alias?.kind {
+                                        requestedColumnName = alias
+                                    }
+
                                     let newColumn = Column(requestedColumnName, table.columnTypes[i])
                                     columns.append(newColumn)
                                 }

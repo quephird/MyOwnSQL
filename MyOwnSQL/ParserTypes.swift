@@ -6,7 +6,21 @@
 //
 
 enum Expression: Equatable {
-    case literal(Token)
+    case term(Token)
+}
+
+struct SelectItem: Equatable {
+    var expression: Expression
+    var alias: Token?
+
+    init(_ expression: Expression) {
+        self.expression = expression
+    }
+
+    init(_ expression: Expression, _ alias: Token) {
+        self.expression = expression
+        self.alias = alias
+    }
 }
 
 enum Definition: Equatable {
@@ -25,9 +39,9 @@ struct CreateStatement: Equatable {
 
 struct SelectStatement: Equatable {
     var table: Token
-    var items: [Expression]
+    var items: [SelectItem]
 
-    init(_ table: Token, _ items: [Expression]) {
+    init(_ table: Token, _ items: [SelectItem]) {
         self.table = table
         self.items = items
     }
