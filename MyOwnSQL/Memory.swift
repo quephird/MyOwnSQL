@@ -105,7 +105,7 @@ class MemoryBackend {
                 var newRow: [MemoryCell] = []
                 for item in insert.items {
                     switch item {
-                    case .literal(let token):
+                    case .term(let token):
                         if let newCell = makeMemoryCell(token) {
                             newRow.append(newCell)
                         } else {
@@ -136,7 +136,7 @@ class MemoryBackend {
         }
         // TODO: Think about how to avoid iterating through selected items twice
         for item in select.items {
-            if case .literal(let token) = item.expression {
+            if case .term(let token) = item.expression {
                 switch token.kind {
                 case .identifier(let selectedColumnName):
                     if !table.columnNames.contains(selectedColumnName) {
@@ -153,7 +153,7 @@ class MemoryBackend {
 
             for (i, item) in select.items.enumerated() {
                 switch item.expression {
-                case .literal(let token):
+                case .term(let token):
                     switch token.kind {
                     case .boolean:
                         if rowNumber == 0 {

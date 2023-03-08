@@ -24,15 +24,15 @@ enum ParseHelperResult<T> {
 //            away with just looking at the one current token.
 func parseExpression(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<Expression> {
     var tokenCursorCopy = tokenCursor
-    let maybeLiteralToken = tokens[tokenCursorCopy]
+    let maybeTermToken = tokens[tokenCursorCopy]
 
-    switch maybeLiteralToken.kind {
+    switch maybeTermToken.kind {
     // TODO: Consider instead being able to handle tokens
     //       for true and false keywords, and removing the
     //       boolean token type
     case .identifier, .string, .numeric, .boolean:
         tokenCursorCopy += 1
-        return .success(tokenCursorCopy, Expression.literal(maybeLiteralToken))
+        return .success(tokenCursorCopy, Expression.term(maybeTermToken))
     default:
         return .failure("Term expression not found")
     }

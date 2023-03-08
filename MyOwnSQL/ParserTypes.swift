@@ -6,7 +6,7 @@
 //
 
 enum Expression: Equatable {
-    case literal(Token)
+    case term(Token)
 }
 
 struct SelectItem: Equatable {

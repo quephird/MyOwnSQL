@@ -22,10 +22,10 @@ class ParserTests: XCTestCase {
         let expectedStatement = SelectStatement(
             Token(kind: .identifier("bar"), location: Location(line: 0, column: 31)),
             [
-                SelectItem(.literal(Token(kind: .numeric("42"), location: Location(line: 0, column: 7)))),
-                SelectItem(.literal(Token(kind: .string("x"), location: Location(line: 0, column: 11)))),
-                SelectItem(.literal(Token(kind: .boolean("true"), location: Location(line: 0, column: 16)))),
-                SelectItem(.literal(Token(kind: .identifier("foo"), location: Location(line: 0, column: 22)))),
+                SelectItem(.term(Token(kind: .numeric("42"), location: Location(line: 0, column: 7)))),
+                SelectItem(.term(Token(kind: .string("x"), location: Location(line: 0, column: 11)))),
+                SelectItem(.term(Token(kind: .boolean("true"), location: Location(line: 0, column: 16)))),
+                SelectItem(.term(Token(kind: .identifier("foo"), location: Location(line: 0, column: 22)))),
             ]
         )
         XCTAssertEqual(statement, expectedStatement)
@@ -46,10 +46,10 @@ class ParserTests: XCTestCase {
             Token(kind: .identifier("the_universe"), location: Location(line: 0, column: 69)),
             [
                 SelectItem(
-                    .literal(Token(kind: .string("What is the meaning?"), location: Location(line: 0, column: 7))),
+                    .term(Token(kind: .string("What is the meaning?"), location: Location(line: 0, column: 7))),
                     Token(kind: .identifier("the_question"), location: Location(line: 0, column: 33))),
                 SelectItem(
-                    .literal(Token(kind: .numeric("42"), location: Location(line: 0, column: 47))),
+                    .term(Token(kind: .numeric("42"), location: Location(line: 0, column: 47))),
                     Token(kind: .identifier("the_answer"), location: Location(line: 0, column: 53))),
             ]
         )
@@ -134,9 +134,9 @@ class ParserTests: XCTestCase {
         let expectedStatement = InsertStatement(
             Token(kind: .identifier("foo"), location: Location(line: 0, column: 12)),
             [
-                .literal(Token(kind: .numeric("42"), location: Location(line: 0, column: 24))),
-                .literal(Token(kind: .string("x"), location: Location(line: 0, column: 28))),
-                .literal(Token(kind: .boolean("false"), location: Location(line: 0, column: 33))),
+                .term(Token(kind: .numeric("42"), location: Location(line: 0, column: 24))),
+                .term(Token(kind: .string("x"), location: Location(line: 0, column: 28))),
+                .term(Token(kind: .boolean("false"), location: Location(line: 0, column: 33))),
             ]
         )
         XCTAssertEqual(statement, expectedStatement)
