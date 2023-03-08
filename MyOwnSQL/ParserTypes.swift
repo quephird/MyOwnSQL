@@ -11,13 +11,13 @@ enum Expression: Equatable {
 
 struct SelectItem: Equatable {
     var expression: Expression
-    var alias: String?
+    var alias: Token?
 
     init(_ expression: Expression) {
         self.expression = expression
     }
 
-    init(_ expression: Expression, _ alias: String) {
+    init(_ expression: Expression, _ alias: Token) {
         self.expression = expression
         self.alias = alias
     }

@@ -27,19 +27,29 @@ func parseSelectItems(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResul
     while tokenCursorCopy < tokens.count {
         let maybeLiteralToken = tokens[tokenCursorCopy]
 
+        var item: SelectItem
         switch maybeLiteralToken.kind {
         // TODO: Consider instead being able to handle tokens
         //       for true and false keywords, and removing the
         //       boolean token type
         case .identifier, .string, .numeric, .boolean:
-            let expression = Expression.literal(maybeLiteralToken)
-            let item = SelectItem(expression)
-            items.append(item)
+            item = SelectItem(Expression.literal(maybeLiteralToken))
         default:
-            return .failure("Literal expression not found")
+            return .failure("Term expression not found")
         }
-        // TODO: Need to check if we're out of tokens
         tokenCursorCopy += 1
+
+        if case .keyword(.as) = tokens[tokenCursorCopy].kind {
+            tokenCursorCopy += 1
+
+            guard case .identifier = tokens[tokenCursorCopy].kind else {
+                return .failure("Term expression not found")
+            }
+            item.alias = tokens[tokenCursorCopy]
+            tokenCursorCopy += 1
+        }
+
+        items.append(item)
 
         guard tokenCursorCopy < tokens.count, case .symbol(.comma) = tokens[tokenCursorCopy].kind else {
             break

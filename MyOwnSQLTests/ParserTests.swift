@@ -31,6 +31,31 @@ class ParserTests: XCTestCase {
         XCTAssertEqual(statement, expectedStatement)
     }
 
+    func testParseSelectStatementWithAsClause() throws {
+        let source = "SELECT 'What is the meaning?' as the_question, 42 as the_answer FROM the_universe"
+        guard case .success(let tokens) = lex(source) else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
+
+        guard case .success(_, .select(let statement)) = parseSelectStatement(tokens, 0) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+        let expectedStatement = SelectStatement(
+            Token(kind: .identifier("the_universe"), location: Location(line: 0, column: 69)),
+            [
+                SelectItem(
+                    .literal(Token(kind: .string("What is the meaning?"), location: Location(line: 0, column: 7))),
+                    Token(kind: .identifier("the_question"), location: Location(line: 0, column: 33))),
+                SelectItem(
+                    .literal(Token(kind: .numeric("42"), location: Location(line: 0, column: 47))),
+                    Token(kind: .identifier("the_answer"), location: Location(line: 0, column: 53))),
+            ]
+        )
+        XCTAssertEqual(statement, expectedStatement)
+    }
+
     func testFailedParseOfSelectStatement() throws {
         for source in [
             "SELECT FROM bar",
