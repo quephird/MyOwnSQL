@@ -22,10 +22,10 @@ class ParserTests: XCTestCase {
         let expectedStatement = SelectStatement(
             Token(kind: .identifier("bar"), location: Location(line: 0, column: 31)),
             [
-                SelectItem(.term(Token(kind: .numeric("42"), location: Location(line: 0, column: 7)))),
-                SelectItem(.term(Token(kind: .string("x"), location: Location(line: 0, column: 11)))),
-                SelectItem(.term(Token(kind: .boolean("true"), location: Location(line: 0, column: 16)))),
-                SelectItem(.term(Token(kind: .identifier("foo"), location: Location(line: 0, column: 22)))),
+                .expression(.term(Token(kind: .numeric("42"), location: Location(line: 0, column: 7)))),
+                .expression(.term(Token(kind: .string("x"), location: Location(line: 0, column: 11)))),
+                .expression(.term(Token(kind: .boolean("true"), location: Location(line: 0, column: 16)))),
+                .expression(.term(Token(kind: .identifier("foo"), location: Location(line: 0, column: 22)))),
             ]
         )
         XCTAssertEqual(statement, expectedStatement)
@@ -45,10 +45,10 @@ class ParserTests: XCTestCase {
         let expectedStatement = SelectStatement(
             Token(kind: .identifier("the_universe"), location: Location(line: 0, column: 69)),
             [
-                SelectItem(
+                .expressionWithAlias(
                     .term(Token(kind: .string("What is the meaning?"), location: Location(line: 0, column: 7))),
                     Token(kind: .identifier("the_question"), location: Location(line: 0, column: 33))),
-                SelectItem(
+                .expressionWithAlias(
                     .term(Token(kind: .numeric("42"), location: Location(line: 0, column: 47))),
                     Token(kind: .identifier("the_answer"), location: Location(line: 0, column: 53))),
             ]

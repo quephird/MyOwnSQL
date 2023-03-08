@@ -136,7 +136,7 @@ class MemoryBackend {
         }
         // TODO: Think about how to avoid iterating through selected items twice
         for item in select.items {
-            if case .term(let token) = item.expression {
+            if case .expression(.term(let token)) = item {
                 switch token.kind {
                 case .identifier(let selectedColumnName):
                     if !table.columnNames.contains(selectedColumnName) {
@@ -152,47 +152,31 @@ class MemoryBackend {
             var resultRow: [MemoryCell] = []
 
             for (i, item) in select.items.enumerated() {
-                switch item.expression {
-                case .term(let token):
+                switch item {
+                case .expression(.term(let token)):
                     switch token.kind {
                     case .boolean:
                         if rowNumber == 0 {
-                            var columnName = "col_\(i)"
-                            if item.alias != nil, case .identifier(let alias) = item.alias?.kind {
-                                columnName = alias
-                            }
-                            let newColumn = Column(columnName, .boolean)
+                            let newColumn = Column("col_\(i)", .boolean)
                             columns.append(newColumn)
                         }
                         resultRow.append(makeMemoryCell(token)!)
                     case .numeric:
                         if rowNumber == 0 {
-                            var columnName = "col_\(i)"
-                            if item.alias != nil, case .identifier(let alias) = item.alias?.kind {
-                                columnName = alias
-                            }
-                            let newColumn = Column(columnName, .int)
+                            let newColumn = Column("col_\(i)", .int)
                             columns.append(newColumn)
                         }
                         resultRow.append(makeMemoryCell(token)!)
                     case .string:
                         if rowNumber == 0 {
-                            var columnName = "col_\(i)"
-                            if item.alias != nil, case .identifier(let alias) = item.alias?.kind {
-                                columnName = alias
-                            }
-                            let newColumn = Column(columnName, .text)
+                            let newColumn = Column("col_\(i)", .text)
                             columns.append(newColumn)
                         }
                         resultRow.append(makeMemoryCell(token)!)
-                    case .identifier(var requestedColumnName):
+                    case .identifier(let requestedColumnName):
                         for (i, columnName) in table.columnNames.enumerated() {
                             if requestedColumnName == columnName {
                                 if rowNumber == 0 {
-                                    if item.alias != nil, case .identifier(let alias) = item.alias?.kind {
-                                        requestedColumnName = alias
-                                    }
-
                                     let newColumn = Column(requestedColumnName, table.columnTypes[i])
                                     columns.append(newColumn)
                                 }
@@ -203,6 +187,46 @@ class MemoryBackend {
                     default:
                         throw StatementError.misc("Unable to handle this kind of token")
                     }
+                case .expressionWithAlias(.term(let expressionToken), let aliasToken):
+                    guard case .identifier(let alias) = aliasToken.kind else {
+                        throw StatementError.misc("Cannot determine alias for expression")
+                    }
+
+                    switch expressionToken.kind {
+                    case .boolean:
+                        if rowNumber == 0 {
+                            let newColumn = Column(alias, .boolean)
+                            columns.append(newColumn)
+                        }
+                        resultRow.append(makeMemoryCell(expressionToken)!)
+                    case .numeric:
+                        if rowNumber == 0 {
+                            let newColumn = Column(alias, .int)
+                            columns.append(newColumn)
+                        }
+                        resultRow.append(makeMemoryCell(expressionToken)!)
+                    case .string:
+                        if rowNumber == 0 {
+                            let newColumn = Column(alias, .text)
+                            columns.append(newColumn)
+                        }
+                        resultRow.append(makeMemoryCell(expressionToken)!)
+                    case .identifier(let requestedColumnName):
+                        for (i, columnName) in table.columnNames.enumerated() {
+                            if requestedColumnName == columnName {
+                                if rowNumber == 0 {
+                                    let newColumn = Column(alias, table.columnTypes[i])
+                                    columns.append(newColumn)
+                                }
+                                resultRow.append(tableRow[i])
+                                break
+                            }
+                        }
+                    default:
+                        throw StatementError.misc("Unable to handle this kind of token")
+                    }
+                default:
+                    throw StatementError.misc("Unsupported expression")
                 }
             }
 
@@ -211,6 +235,30 @@ class MemoryBackend {
         return ResultSet(columns, resultRows)
     }
 }
+
+//func makeColumn(_ token: Token) -> Column {
+//    switch token.kind {
+//    case .boolean:
+//        return Column("col_\(i)", .boolean)
+//    case .numeric:
+//        return Column("col_\(i)", .int)
+//    case .string:
+//        return Column("col_\(i)", .text)
+//    case .identifier(let requestedColumnName):
+//        for (i, columnName) in table.columnNames.enumerated() {
+//            if requestedColumnName == columnName {
+//                if rowNumber == 0 {
+//                    let newColumn = Column(requestedColumnName, table.columnTypes[i])
+//                    columns.append(newColumn)
+//                }
+//                resultRow.append(tableRow[i])
+//                break
+//            }
+//        }
+//    default:
+//        throw StatementError.misc("Unable to handle this kind of token")
+//    }
+//}
 
 func makeMemoryCell(_ token: Token) -> MemoryCell? {
     switch token.kind {

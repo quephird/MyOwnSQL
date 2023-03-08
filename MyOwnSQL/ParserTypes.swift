@@ -9,18 +9,10 @@ enum Expression: Equatable {
     case term(Token)
 }
 
-struct SelectItem: Equatable {
-    var expression: Expression
-    var alias: Token?
-
-    init(_ expression: Expression) {
-        self.expression = expression
-    }
-
-    init(_ expression: Expression, _ alias: Token) {
-        self.expression = expression
-        self.alias = alias
-    }
+enum SelectItem: Equatable {
+    case expression(Expression)
+    case expressionWithAlias(Expression, Token)
+    case star
 }
 
 enum Definition: Equatable {
