@@ -225,8 +225,14 @@ class MemoryBackend {
                     default:
                         throw StatementError.misc("Unable to handle this kind of token")
                     }
-                default:
-                    throw StatementError.misc("Unsupported expression")
+                case .star:
+                    for (i, columnName) in table.columnNames.enumerated() {
+                        if rowNumber == 0 {
+                            let newColumn = Column(columnName, table.columnTypes[i])
+                            columns.append(newColumn)
+                        }
+                        resultRow.append(tableRow[i])
+                    }
                 }
             }
 

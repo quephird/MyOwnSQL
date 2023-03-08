@@ -52,21 +52,26 @@ func parseSelectItems(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResul
     var items: [SelectItem] = []
 
     while tokenCursorCopy < tokens.count {
-        guard case .success(let newTokenCursorCopy, let expression) = parseExpression(tokens, tokenCursorCopy) else {
-            return .failure("Expression expected but not found")
-        }
-        tokenCursorCopy = newTokenCursorCopy
-
-        if case .keyword(.as) = tokens[tokenCursorCopy].kind {
-            tokenCursorCopy += 1
-
-            guard case .identifier = tokens[tokenCursorCopy].kind else {
-                return .failure("Identifier expected after AS keyword")
-            }
-            items.append(.expressionWithAlias(expression, tokens[tokenCursorCopy]))
+        if case .symbol(.asterisk) = tokens[tokenCursorCopy].kind {
+            items.append(.star)
             tokenCursorCopy += 1
         } else {
-            items.append(.expression(expression))
+            guard case .success(let newTokenCursorCopy, let expression) = parseExpression(tokens, tokenCursorCopy) else {
+                return .failure("Expression expected but not found")
+            }
+            tokenCursorCopy = newTokenCursorCopy
+
+            if case .keyword(.as) = tokens[tokenCursorCopy].kind {
+                tokenCursorCopy += 1
+
+                guard case .identifier = tokens[tokenCursorCopy].kind else {
+                    return .failure("Identifier expected after AS keyword")
+                }
+                items.append(.expressionWithAlias(expression, tokens[tokenCursorCopy]))
+                tokenCursorCopy += 1
+            } else {
+                items.append(.expression(expression))
+            }
         }
 
         guard tokenCursorCopy < tokens.count, case .symbol(.comma) = tokens[tokenCursorCopy].kind else {

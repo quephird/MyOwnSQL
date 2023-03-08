@@ -56,6 +56,26 @@ class ParserTests: XCTestCase {
         XCTAssertEqual(statement, expectedStatement)
     }
 
+    func testParseSelectStatementWithStar() throws {
+        let source = "SELECT * FROM some_table"
+        guard case .success(let tokens) = lex(source) else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
+
+        guard case .success(_, .select(let statement)) = parseSelectStatement(tokens, 0) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+        let expectedStatement = SelectStatement(
+            Token(kind: .identifier("some_table"), location: Location(line: 0, column: 14)),
+            [
+                .star
+            ]
+        )
+        XCTAssertEqual(statement, expectedStatement)
+    }
+
     func testFailedParseOfSelectStatement() throws {
         for source in [
             "SELECT FROM bar",
