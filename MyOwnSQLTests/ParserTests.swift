@@ -76,12 +76,14 @@ class ParserTests: XCTestCase {
         XCTAssertEqual(statement, expectedStatement)
     }
 
-    func testFailedParseOfSelectStatement() throws {
+    func testInvalidSelectStatementsShouldFailToParse() throws {
         for source in [
             "SELECT FROM bar",
             "SELECT 42 foo",
             "SELECT 42 FROM",
             "SELECT 42 'forty-two' FROM foo",
+            "SELECT 42 AS FROM foo",
+            "SELECT * AS everything FROM FOO",
         ] {
             guard case .success(let tokens) = lex(source) else {
                 XCTFail("Lexing failed unexpectedly")
