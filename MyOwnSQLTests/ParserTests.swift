@@ -22,10 +22,10 @@ class ParserTests: XCTestCase {
         let expectedStatement = SelectStatement(
             Token(kind: .identifier("bar"), location: Location(line: 0, column: 31)),
             [
-                SelectItem(.term(Token(kind: .numeric("42"), location: Location(line: 0, column: 7)))),
-                SelectItem(.term(Token(kind: .string("x"), location: Location(line: 0, column: 11)))),
-                SelectItem(.term(Token(kind: .boolean("true"), location: Location(line: 0, column: 16)))),
-                SelectItem(.term(Token(kind: .identifier("foo"), location: Location(line: 0, column: 22)))),
+                .expression(.term(Token(kind: .numeric("42"), location: Location(line: 0, column: 7)))),
+                .expression(.term(Token(kind: .string("x"), location: Location(line: 0, column: 11)))),
+                .expression(.term(Token(kind: .boolean("true"), location: Location(line: 0, column: 16)))),
+                .expression(.term(Token(kind: .identifier("foo"), location: Location(line: 0, column: 22)))),
             ]
         )
         XCTAssertEqual(statement, expectedStatement)
@@ -45,10 +45,10 @@ class ParserTests: XCTestCase {
         let expectedStatement = SelectStatement(
             Token(kind: .identifier("the_universe"), location: Location(line: 0, column: 69)),
             [
-                SelectItem(
+                .expressionWithAlias(
                     .term(Token(kind: .string("What is the meaning?"), location: Location(line: 0, column: 7))),
                     Token(kind: .identifier("the_question"), location: Location(line: 0, column: 33))),
-                SelectItem(
+                .expressionWithAlias(
                     .term(Token(kind: .numeric("42"), location: Location(line: 0, column: 47))),
                     Token(kind: .identifier("the_answer"), location: Location(line: 0, column: 53))),
             ]
@@ -56,12 +56,34 @@ class ParserTests: XCTestCase {
         XCTAssertEqual(statement, expectedStatement)
     }
 
-    func testFailedParseOfSelectStatement() throws {
+    func testParseSelectStatementWithStar() throws {
+        let source = "SELECT * FROM some_table"
+        guard case .success(let tokens) = lex(source) else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
+
+        guard case .success(_, .select(let statement)) = parseSelectStatement(tokens, 0) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+        let expectedStatement = SelectStatement(
+            Token(kind: .identifier("some_table"), location: Location(line: 0, column: 14)),
+            [
+                .star
+            ]
+        )
+        XCTAssertEqual(statement, expectedStatement)
+    }
+
+    func testInvalidSelectStatementsShouldFailToParse() throws {
         for source in [
             "SELECT FROM bar",
             "SELECT 42 foo",
             "SELECT 42 FROM",
             "SELECT 42 'forty-two' FROM foo",
+            "SELECT 42 AS FROM foo",
+            "SELECT * AS everything FROM FOO",
         ] {
             guard case .success(let tokens) = lex(source) else {
                 XCTFail("Lexing failed unexpectedly")
