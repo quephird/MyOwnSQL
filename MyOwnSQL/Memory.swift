@@ -151,6 +151,7 @@ class MemoryBackend {
         for (rowNumber, tableRow) in table.data.enumerated() {
             var resultRow: [MemoryCell] = []
 
+            // TODO: _Seriously_ need to refactor this for loop
             for (i, item) in select.items.enumerated() {
                 switch item {
                 case .expression(.term(let token)):
@@ -241,30 +242,6 @@ class MemoryBackend {
         return ResultSet(columns, resultRows)
     }
 }
-
-//func makeColumn(_ token: Token) -> Column {
-//    switch token.kind {
-//    case .boolean:
-//        return Column("col_\(i)", .boolean)
-//    case .numeric:
-//        return Column("col_\(i)", .int)
-//    case .string:
-//        return Column("col_\(i)", .text)
-//    case .identifier(let requestedColumnName):
-//        for (i, columnName) in table.columnNames.enumerated() {
-//            if requestedColumnName == columnName {
-//                if rowNumber == 0 {
-//                    let newColumn = Column(requestedColumnName, table.columnTypes[i])
-//                    columns.append(newColumn)
-//                }
-//                resultRow.append(tableRow[i])
-//                break
-//            }
-//        }
-//    default:
-//        throw StatementError.misc("Unable to handle this kind of token")
-//    }
-//}
 
 func makeMemoryCell(_ token: Token) -> MemoryCell? {
     switch token.kind {
