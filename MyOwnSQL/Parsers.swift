@@ -52,22 +52,54 @@ func parseExpressions(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResul
     return .success(tokenCursorCopy, expressions)
 }
 
+func parseSelectItems(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<[SelectItem]> {
+    var tokenCursorCopy = tokenCursor
+    var items: [SelectItem] = []
+
+    while tokenCursorCopy < tokens.count {
+        let maybeLiteralToken = tokens[tokenCursorCopy]
+
+        switch maybeLiteralToken.kind {
+        // TODO: Consider instead being able to handle tokens
+        //       for true and false keywords, and removing the
+        //       boolean token type
+        case .identifier, .string, .numeric, .boolean:
+            let expression = Expression.term(maybeLiteralToken)
+            items.append(SelectItem(expression))
+        default:
+            return .failure("Literal expression not found")
+        }
+        // TODO: Need to check if we're out of tokens
+        tokenCursorCopy += 1
+
+        guard tokenCursorCopy < tokens.count, case .symbol(.comma) = tokens[tokenCursorCopy].kind else {
+            break
+        }
+        tokenCursorCopy += 1
+    }
+
+    if items.isEmpty {
+        return .failure("At least one expression was expected")
+    }
+    return .success(tokenCursorCopy, items)
+}
+
 // For now, the structure of a supported SELECT statement is the following:
 //
 //     SELECT <one or more expressions> FROM <table name>
 func parseSelectStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<Statement> {
     var tokenCursorCopy = tokenCursor
-    var expressions: [Expression]
+    var items: [SelectItem]
 
     if tokens[tokenCursorCopy].kind != TokenKind.keyword(.select) {
         return .noMatch
     }
     tokenCursorCopy += 1
 
-    switch parseExpressions(tokens, tokenCursorCopy) {
-    case .success(let newTokenCursor, let newExpressions):
+    switch parseSelectItems(tokens, tokenCursorCopy) {
+    case .success(let newTokenCursor, let newItems):
         tokenCursorCopy = newTokenCursor
-        expressions = newExpressions
+        items = newItems
     case .failure(let errorMessage):
         return .failure(errorMessage)
     default:
@@ -85,7 +117,7 @@ func parseSelectStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
     let table = tokens[tokenCursorCopy]
     tokenCursorCopy += 1
 
-    let statement = SelectStatement(table, expressions)
+    let statement = SelectStatement(table, items)
     return .success(tokenCursorCopy, .select(statement))
 }
 

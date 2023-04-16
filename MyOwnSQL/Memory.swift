@@ -157,14 +157,16 @@ class MemoryBackend {
             throw StatementError.tableDoesNotExist
         }
         // TODO: Think about how to avoid iterating through selected items twice
-        for case .term(let token) in select.items {
-            switch token.kind {
-            case .identifier(let selectedColumnName):
-                if !table.columnNames.contains(selectedColumnName) {
-                    throw StatementError.columnDoesNotExist
+        for item in select.items {
+            if case .term(let token) = item.expression {
+                switch token.kind {
+                case .identifier(let selectedColumnName):
+                    if !table.columnNames.contains(selectedColumnName) {
+                        throw StatementError.columnDoesNotExist
+                    }
+                default:
+                    continue
                 }
-            default:
-                continue
             }
         }
 
@@ -172,7 +174,7 @@ class MemoryBackend {
             var resultRow: [MemoryCell] = []
 
             for (i, item) in select.items.enumerated() {
-                switch item {
+                switch item.expression {
                 case .term(let token):
                     switch token.kind {
                     case .boolean:
