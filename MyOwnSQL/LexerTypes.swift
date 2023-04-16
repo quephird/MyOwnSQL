@@ -26,6 +26,7 @@ enum Keyword: String, CaseIterable {
     case `false` = "false"
     case and = "and"
     case or = "or"
+    case `as` = "as"
 }
 
 enum Symbol: String, CaseIterable {

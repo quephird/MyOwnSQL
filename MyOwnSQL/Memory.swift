@@ -174,24 +174,29 @@ class MemoryBackend {
             var resultRow: [MemoryCell] = []
 
             for (i, item) in select.items.enumerated() {
+                var maybeAlias: String? = nil
+                if let aliasToken = item.alias, case .identifier(let alias) = aliasToken.kind {
+                    maybeAlias = alias
+                }
+
                 switch item.expression {
                 case .term(let token):
                     switch token.kind {
                     case .boolean:
                         if rowNumber == 0 {
-                            let newColumn = Column("col_\(i)", .boolean)
+                            let newColumn = Column(maybeAlias == nil ? "col_\(i)" : maybeAlias!, .boolean)
                             columns.append(newColumn)
                         }
                         resultRow.append(makeMemoryCell(token)!)
                     case .numeric:
                         if rowNumber == 0 {
-                            let newColumn = Column("col_\(i)", .int)
+                            let newColumn = Column(maybeAlias == nil ? "col_\(i)" : maybeAlias!, .int)
                             columns.append(newColumn)
                         }
                         resultRow.append(makeMemoryCell(token)!)
                     case .string:
                         if rowNumber == 0 {
-                            let newColumn = Column("col_\(i)", .text)
+                            let newColumn = Column(maybeAlias == nil ? "col_\(i)" : maybeAlias!, .text)
                             columns.append(newColumn)
                         }
                         resultRow.append(makeMemoryCell(token)!)
@@ -199,7 +204,7 @@ class MemoryBackend {
                         for (i, columnName) in table.columnNames.enumerated() {
                             if requestedColumnName == columnName {
                                 if rowNumber == 0 {
-                                    let newColumn = Column(requestedColumnName, table.columnTypes[i])
+                                    let newColumn = Column(maybeAlias == nil ? requestedColumnName : maybeAlias!, table.columnTypes[i])
                                     columns.append(newColumn)
                                 }
                                 resultRow.append(tableRow[i])

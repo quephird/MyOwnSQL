@@ -74,15 +74,30 @@ func parseSelectItems(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResul
     var items: [SelectItem] = []
 
     while tokenCursorCopy < tokens.count {
+        var item: SelectItem
         switch parseExpression(tokens, tokenCursorCopy) {
         case .success(let newTokenCursor, let expression):
             tokenCursorCopy = newTokenCursor
-            items.append(SelectItem(expression))
+            item = SelectItem(expression)
         case .failure(let errorMessage):
             return .failure(errorMessage)
         default:
             return .failure("Could not parse expression")
         }
+
+        if tokens[tokenCursorCopy].kind == TokenKind.keyword(.as) {
+            tokenCursorCopy += 1
+
+            let maybeAliasToken = tokens[tokenCursorCopy]
+            if case .identifier = maybeAliasToken.kind {
+                item.alias = maybeAliasToken
+                tokenCursorCopy += 1
+            } else {
+                return .failure("Alias expected after AS keyword")
+            }
+        }
+
+        items.append(item)
 
         guard tokenCursorCopy < tokens.count, case .symbol(.comma) = tokens[tokenCursorCopy].kind else {
             break
