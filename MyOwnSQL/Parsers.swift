@@ -52,25 +52,37 @@ func parseExpressions(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResul
     return .success(tokenCursorCopy, expressions)
 }
 
+func parseExpression(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<Expression> {
+    var tokenCursorCopy = tokenCursor
+
+    let maybeTermToken = tokens[tokenCursorCopy]
+
+    switch maybeTermToken.kind {
+    // TODO: Consider instead being able to handle tokens
+    //       for true and false keywords, and removing the
+    //       boolean token type
+    case .identifier, .string, .numeric, .boolean:
+        tokenCursorCopy += 1
+        return .success(tokenCursorCopy, Expression.term(maybeTermToken))
+    default:
+        return .failure("Unsupported expression found")
+    }
+}
+
 func parseSelectItems(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<[SelectItem]> {
     var tokenCursorCopy = tokenCursor
     var items: [SelectItem] = []
 
     while tokenCursorCopy < tokens.count {
-        let maybeLiteralToken = tokens[tokenCursorCopy]
-
-        switch maybeLiteralToken.kind {
-        // TODO: Consider instead being able to handle tokens
-        //       for true and false keywords, and removing the
-        //       boolean token type
-        case .identifier, .string, .numeric, .boolean:
-            let expression = Expression.term(maybeLiteralToken)
+        switch parseExpression(tokens, tokenCursorCopy) {
+        case .success(let newTokenCursor, let expression):
+            tokenCursorCopy = newTokenCursor
             items.append(SelectItem(expression))
+        case .failure(let errorMessage):
+            return .failure(errorMessage)
         default:
-            return .failure("Literal expression not found")
+            return .failure("Could not parse expression")
         }
-        // TODO: Need to check if we're out of tokens
-        tokenCursorCopy += 1
 
         guard tokenCursorCopy < tokens.count, case .symbol(.comma) = tokens[tokenCursorCopy].kind else {
             break
