@@ -22,10 +22,10 @@ class ParserTests: XCTestCase {
         let expectedStatement = SelectStatement(
             Token(kind: .identifier("bar"), location: Location(line: 0, column: 31)),
             [
-                .term(Token(kind: .numeric("42"), location: Location(line: 0, column: 7))),
-                .term(Token(kind: .string("x"), location: Location(line: 0, column: 11))),
-                .term(Token(kind: .boolean("true"), location: Location(line: 0, column: 16))),
-                .term(Token(kind: .identifier("foo"), location: Location(line: 0, column: 22))),
+                SelectItem(.term(Token(kind: .numeric("42"), location: Location(line: 0, column: 7)))),
+                SelectItem(.term(Token(kind: .string("x"), location: Location(line: 0, column: 11)))),
+                SelectItem(.term(Token(kind: .boolean("true"), location: Location(line: 0, column: 16)))),
+                SelectItem(.term(Token(kind: .identifier("foo"), location: Location(line: 0, column: 22)))),
             ]
         )
         XCTAssertEqual(statement, expectedStatement)
