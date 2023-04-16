@@ -156,57 +156,54 @@ class MemoryBackend {
         guard let table = self.tables[tableName] else {
             throw StatementError.tableDoesNotExist
         }
-        // TODO: Think about how to avoid iterating through selected items twice
-        for item in select.items {
-            if case .term(let token) = item.expression {
+
+        for (i, item) in select.items.enumerated() {
+            var maybeAlias: String? = nil
+            if let aliasToken = item.alias, case .identifier(let alias) = aliasToken.kind {
+                maybeAlias = alias
+            }
+
+            switch item.expression {
+            case .term(let token):
                 switch token.kind {
-                case .identifier(let selectedColumnName):
-                    if !table.columnNames.contains(selectedColumnName) {
+                case .boolean:
+                    columns.append(Column(maybeAlias == nil ? "col_\(i)" : maybeAlias!, .boolean))
+                case .numeric:
+                    columns.append(Column(maybeAlias == nil ? "col_\(i)" : maybeAlias!, .int))
+                case .string:
+                    columns.append(Column(maybeAlias == nil ? "col_\(i)" : maybeAlias!, .text))
+                case .identifier(let requestedColumnName):
+                    if !table.columnNames.contains(requestedColumnName) {
                         throw StatementError.columnDoesNotExist
+                    } else {
+                        for (i, columnName) in table.columnNames.enumerated() {
+                            if requestedColumnName == columnName {
+                                columns.append(Column(maybeAlias == nil ? requestedColumnName : maybeAlias!, table.columnTypes[i]))
+                                break
+                            }
+                        }
                     }
                 default:
-                    continue
+                    throw StatementError.misc("Unable to handle this kind of token")
                 }
+            default:
+                throw StatementError.misc("Unsupported expression")
             }
+
         }
 
-        for (rowNumber, tableRow) in table.data.enumerated() {
+        for tableRow in table.data {
             var resultRow: [MemoryCell] = []
 
-            for (i, item) in select.items.enumerated() {
-                var maybeAlias: String? = nil
-                if let aliasToken = item.alias, case .identifier(let alias) = aliasToken.kind {
-                    maybeAlias = alias
-                }
-
+            for item in select.items {
                 switch item.expression {
                 case .term(let token):
                     switch token.kind {
-                    case .boolean:
-                        if rowNumber == 0 {
-                            let newColumn = Column(maybeAlias == nil ? "col_\(i)" : maybeAlias!, .boolean)
-                            columns.append(newColumn)
-                        }
-                        resultRow.append(makeMemoryCell(token)!)
-                    case .numeric:
-                        if rowNumber == 0 {
-                            let newColumn = Column(maybeAlias == nil ? "col_\(i)" : maybeAlias!, .int)
-                            columns.append(newColumn)
-                        }
-                        resultRow.append(makeMemoryCell(token)!)
-                    case .string:
-                        if rowNumber == 0 {
-                            let newColumn = Column(maybeAlias == nil ? "col_\(i)" : maybeAlias!, .text)
-                            columns.append(newColumn)
-                        }
+                    case .boolean, .numeric, .string:
                         resultRow.append(makeMemoryCell(token)!)
                     case .identifier(let requestedColumnName):
                         for (i, columnName) in table.columnNames.enumerated() {
                             if requestedColumnName == columnName {
-                                if rowNumber == 0 {
-                                    let newColumn = Column(maybeAlias == nil ? requestedColumnName : maybeAlias!, table.columnTypes[i])
-                                    columns.append(newColumn)
-                                }
                                 resultRow.append(tableRow[i])
                                 break
                             }
@@ -221,6 +218,7 @@ class MemoryBackend {
 
             resultRows.append(resultRow)
         }
+
         return ResultSet(columns, resultRows)
     }
 }
