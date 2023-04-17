@@ -134,53 +134,78 @@ class MemoryBackend {
         guard let table = self.tables[tableName] else {
             throw StatementError.tableDoesNotExist(tableName)
         }
-        // TODO: Think about how to avoid iterating through selected items twice
-        for item in select.items {
-            if case .expression(.term(let token)) = item {
+
+        // First we need to produce a list of column/alias names...
+        for (i, item) in select.items.enumerated() {
+            switch item {
+            case .expression(.term(let token)):
                 switch token.kind {
-                case .identifier(let selectedColumnName):
-                    if !table.columnNames.contains(selectedColumnName) {
-                        throw StatementError.columnDoesNotExist(selectedColumnName)
+                case .boolean:
+                    columns.append(Column("col_\(i)", .boolean))
+                case .string:
+                    columns.append(Column("col_\(i)", .text))
+                case .numeric:
+                    columns.append(Column("col_\(i)", .int))
+                case .identifier(let requestedColumnName):
+                    if !table.columnNames.contains(requestedColumnName) {
+                        throw StatementError.columnDoesNotExist(requestedColumnName)
+                    } else {
+                        for (i, columnName) in table.columnNames.enumerated() {
+                            if requestedColumnName == columnName {
+                                columns.append(Column(requestedColumnName, table.columnTypes[i]))
+                                break
+                            }
+                        }
                     }
                 default:
-                    continue
+                    throw StatementError.misc("Unable to handle this kind of token")
+                }
+            case .expressionWithAlias(.term(let token), let aliasToken):
+                guard case .identifier(let alias) = aliasToken.kind else {
+                    throw StatementError.misc("Bad alias token encountered")
+                }
+
+                switch token.kind {
+                case .boolean:
+                    columns.append(Column(alias, .boolean))
+                case .string:
+                    columns.append(Column(alias, .text))
+                case .numeric:
+                    columns.append(Column(alias, .int))
+                case .identifier(let requestedColumnName):
+                    if !table.columnNames.contains(requestedColumnName) {
+                        throw StatementError.columnDoesNotExist(requestedColumnName)
+                    } else {
+                        for (i, columnName) in table.columnNames.enumerated() {
+                            if requestedColumnName == columnName {
+                                columns.append(Column(alias, table.columnTypes[i]))
+                                break
+                            }
+                        }
+                    }
+                default:
+                    throw StatementError.misc("Unable to handle this kind of token")
+                }
+            case .star:
+                for (i, columnName) in table.columnNames.enumerated() {
+                    columns.append(Column(columnName, table.columnTypes[i]))
                 }
             }
         }
 
-        for (rowNumber, tableRow) in table.data.enumerated() {
+        // ... then we can produce the result set...
+        for tableRow in table.data {
             var resultRow: [MemoryCell] = []
 
-            // TODO: _Seriously_ need to refactor this for loop
-            for (i, item) in select.items.enumerated() {
+            for item in select.items {
                 switch item {
                 case .expression(.term(let token)):
                     switch token.kind {
-                    case .boolean:
-                        if rowNumber == 0 {
-                            let newColumn = Column("col_\(i)", .boolean)
-                            columns.append(newColumn)
-                        }
-                        resultRow.append(makeMemoryCell(token)!)
-                    case .numeric:
-                        if rowNumber == 0 {
-                            let newColumn = Column("col_\(i)", .int)
-                            columns.append(newColumn)
-                        }
-                        resultRow.append(makeMemoryCell(token)!)
-                    case .string:
-                        if rowNumber == 0 {
-                            let newColumn = Column("col_\(i)", .text)
-                            columns.append(newColumn)
-                        }
+                    case .boolean, .numeric, .string:
                         resultRow.append(makeMemoryCell(token)!)
                     case .identifier(let requestedColumnName):
                         for (i, columnName) in table.columnNames.enumerated() {
                             if requestedColumnName == columnName {
-                                if rowNumber == 0 {
-                                    let newColumn = Column(requestedColumnName, table.columnTypes[i])
-                                    columns.append(newColumn)
-                                }
                                 resultRow.append(tableRow[i])
                                 break
                             }
@@ -188,37 +213,13 @@ class MemoryBackend {
                     default:
                         throw StatementError.misc("Unable to handle this kind of token")
                     }
-                case .expressionWithAlias(.term(let expressionToken), let aliasToken):
-                    guard case .identifier(let alias) = aliasToken.kind else {
-                        throw StatementError.misc("Cannot determine alias for expression")
-                    }
-
+                case .expressionWithAlias(.term(let expressionToken), _):
                     switch expressionToken.kind {
-                    case .boolean:
-                        if rowNumber == 0 {
-                            let newColumn = Column(alias, .boolean)
-                            columns.append(newColumn)
-                        }
-                        resultRow.append(makeMemoryCell(expressionToken)!)
-                    case .numeric:
-                        if rowNumber == 0 {
-                            let newColumn = Column(alias, .int)
-                            columns.append(newColumn)
-                        }
-                        resultRow.append(makeMemoryCell(expressionToken)!)
-                    case .string:
-                        if rowNumber == 0 {
-                            let newColumn = Column(alias, .text)
-                            columns.append(newColumn)
-                        }
+                    case .boolean, .numeric, .string:
                         resultRow.append(makeMemoryCell(expressionToken)!)
                     case .identifier(let requestedColumnName):
                         for (i, columnName) in table.columnNames.enumerated() {
                             if requestedColumnName == columnName {
-                                if rowNumber == 0 {
-                                    let newColumn = Column(alias, table.columnTypes[i])
-                                    columns.append(newColumn)
-                                }
                                 resultRow.append(tableRow[i])
                                 break
                             }
@@ -227,11 +228,7 @@ class MemoryBackend {
                         throw StatementError.misc("Unable to handle this kind of token")
                     }
                 case .star:
-                    for (i, columnName) in table.columnNames.enumerated() {
-                        if rowNumber == 0 {
-                            let newColumn = Column(columnName, table.columnTypes[i])
-                            columns.append(newColumn)
-                        }
+                    for (i, _) in table.columnNames.enumerated() {
                         resultRow.append(tableRow[i])
                     }
                 }
