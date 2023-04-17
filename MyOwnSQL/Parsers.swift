@@ -343,3 +343,26 @@ func parse(_ source: String) -> ParseResult {
 
     return .success(statements)
 }
+
+func bindingPower(_ token: Token) -> Int {
+    switch token.kind {
+    case .keyword(let keyword):
+        switch keyword {
+        case .and, .or:
+            return 1
+        default:
+            return 0
+        }
+    case .symbol(let symbol):
+        switch symbol {
+        case .equals, .notEquals, .concatenate, .plus:
+            return 3
+        case .asterisk:
+            return 4
+        default:
+            return 0
+        }
+    default:
+        return 0
+    }
+}

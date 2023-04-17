@@ -25,15 +25,20 @@ enum Keyword: String, CaseIterable {
     case `true` = "true"
     case `false` = "false"
     case `as` = "as"
+    case and = "and"
+    case or = "or"
 }
 
 enum Symbol: String, CaseIterable {
     case semicolon = ";"
     case asterisk = "*"
+    case plus = "+"
     case comma = ","
     case leftParenthesis = "("
     case rightParenthesis = ")"
     case equals = "="
+    case notEquals = "!="
+    case concatenate = "||"
 }
 
 enum TokenKind: Hashable, CustomStringConvertible {
