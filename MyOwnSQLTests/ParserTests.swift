@@ -8,6 +8,143 @@
 import XCTest
 
 class ParserTests: XCTestCase {
+    func testParseTermExpression() throws {
+        let source = "42"
+        guard case .success(let tokens) = lex(source) else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
+
+        let delimiters: [TokenKind] = [.keyword(.from), .keyword(.as), .symbol(.comma)]
+        guard case .success(_, let expression) = parseExpression(tokens, 0, delimiters, 0) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+
+        let expectedExpression: Expression = .term(
+            Token(
+                kind: .numeric("42"),
+                location: Location(line: 0, column: 0)
+            ))
+        XCTAssertEqual(expression, expectedExpression)
+    }
+
+    func testParseBinaryExpression() throws {
+        let source = "1 + 2"
+        guard case .success(let tokens) = lex(source) else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
+
+        let delimiters: [TokenKind] = [.keyword(.from), .keyword(.as), .symbol(.comma)]
+        guard case .success(_, let expression) = parseExpression(tokens, 0, delimiters, 0) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+
+        let expectedExpression: Expression = .binary(
+            .term(
+                Token(
+                    kind: .numeric("1"),
+                    location: Location(line: 0, column: 0)
+                )),
+            .term(
+                Token(
+                    kind: .numeric("2"),
+                    location: Location(line: 0, column: 4)
+                )),
+            Token(
+                kind: .symbol(.plus),
+                location: Location(line: 0, column: 2)
+            ))
+
+        XCTAssertEqual(expression, expectedExpression)
+    }
+
+    func testParseComplexBinaryExpression() throws {
+        let source = "1 + 2 * 3"
+        guard case .success(let tokens) = lex(source) else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
+
+        let delimiters: [TokenKind] = [.keyword(.from), .keyword(.as), .symbol(.comma)]
+        guard case .success(_, let expression) = parseExpression(tokens, 0, delimiters, 0) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+
+        let expectedExpression: Expression = .binary(
+            .term(
+                Token(
+                    kind: .numeric("1"),
+                    location: Location(line: 0, column: 0)
+                )),
+            .binary(
+                .term(
+                    Token(
+                        kind: .numeric("2"),
+                        location: Location(line: 0, column: 4)
+                    )),
+                .term(
+                    Token(
+                        kind: .numeric("3"),
+                        location: Location(line: 0, column: 8)
+                    )),
+                Token(
+                    kind: .symbol(.asterisk),
+                    location: Location(line: 0, column: 6)
+            )),
+            Token(
+                kind: .symbol(.plus),
+                location: Location(line: 0, column: 2)
+            ))
+
+        XCTAssertEqual(expression, expectedExpression)
+    }
+
+    func testParseComplexBinaryExpressionWithAdditionFollowingMultiplication() throws {
+        let source = "1 * 2 + 3"
+        guard case .success(let tokens) = lex(source) else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
+
+        let delimiters: [TokenKind] = [.keyword(.from), .keyword(.as), .symbol(.comma)]
+        guard case .success(_, let expression) = parseExpression(tokens, 0, delimiters, 0) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+
+        let expectedExpression: Expression = .binary(
+            .binary(
+                .term(
+                    Token(
+                        kind: .numeric("1"),
+                        location: Location(line: 0, column: 0)
+                    )),
+                .term(
+                    Token(
+                        kind: .numeric("2"),
+                        location: Location(line: 0, column: 4)
+                    )),
+                Token(
+                    kind: .symbol(.asterisk),
+                    location: Location(line: 0, column: 2)
+            )),
+            .term(
+                Token(
+                    kind: .numeric("3"),
+                    location: Location(line: 0, column: 8)
+                )),
+            Token(
+                kind: .symbol(.plus),
+                location: Location(line: 0, column: 6)
+            ))
+
+        XCTAssertEqual(expression, expectedExpression)
+    }
+
     func testSuccessfulParseOfSelectStatement() throws {
         let source = "SELECT 42, 'x', true, foo FROM bar"
         guard case .success(let tokens) = lex(source) else {

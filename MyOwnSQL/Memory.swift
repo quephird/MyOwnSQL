@@ -111,6 +111,8 @@ class MemoryBackend {
                         } else {
                             throw StatementError.misc("Unable to create cell value from token")
                         }
+                    default:
+                        throw StatementError.misc("Unable able to handle this kind of expression")
                     }
                 }
 
@@ -190,6 +192,8 @@ class MemoryBackend {
                 for (i, columnName) in table.columnNames.enumerated() {
                     columns.append(Column(columnName, table.columnTypes[i]))
                 }
+            default:
+                throw StatementError.misc("Cannot handle this kind of expression")
             }
         }
 
@@ -231,6 +235,8 @@ class MemoryBackend {
                     for (i, _) in table.columnNames.enumerated() {
                         resultRow.append(tableRow[i])
                     }
+                default:
+                    throw StatementError.misc("Unable to handle this kind of expression")
                 }
             }
 
