@@ -33,6 +33,7 @@ struct CreateStatement: Equatable {
 struct SelectStatement: Equatable {
     var table: Token
     var items: [SelectItem]
+    var whereClause: Expression? = nil
 
     init(_ table: Token, _ items: [SelectItem]) {
         self.table = table
