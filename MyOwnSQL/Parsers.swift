@@ -15,6 +15,33 @@ enum ParseHelperResult<T> {
     case success(Int, T)
 }
 
+func parseToken(_ tokens: [Token], _ tokenCursor: Int, _ tokenKind: TokenKind) -> ParseHelperResult<Token> {
+    if tokenCursor >= tokens.count {
+        return .failure("Expected more tokens")
+    }
+
+    let currentToken = tokens[tokenCursor]
+    if currentToken.kind == tokenKind {
+        return .success(tokenCursor+1, currentToken)
+    }
+
+    return .noMatch
+}
+
+func parseTermExpression(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<Expression> {
+    let maybeTermToken = tokens[tokenCursor]
+
+    switch maybeTermToken.kind {
+    // TODO: Consider instead being able to handle tokens
+    //       for true and false keywords, and removing the
+    //       boolean token type
+    case .identifier, .string, .numeric, .boolean:
+        return .success(tokenCursor+1, Expression.term(maybeTermToken))
+    default:
+        return .failure("Term expression not found")
+    }
+}
+
 // NOTA BENE: This function will eventually need to take another parameter
 //            denoting which tokens should be considered to delimit the expression,
 //            primarily because parseSelectItem and parseInsertValues share this
@@ -22,20 +49,107 @@ enum ParseHelperResult<T> {
 //            because when we tackle parsing of binary expressions, we will not
 //            necessarily know how many tokens comprise them. For now, we can get
 //            away with just looking at the one current token.
-func parseExpression(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<Expression> {
+func parseExpression(_ tokens: [Token], _ tokenCursor: Int, _ delimeters: [TokenKind], _ minimumBindingPower: Int) -> ParseHelperResult<Expression> {
     var tokenCursorCopy = tokenCursor
-    let maybeTermToken = tokens[tokenCursorCopy]
+    var expression: Expression
 
-    switch maybeTermToken.kind {
-    // TODO: Consider instead being able to handle tokens
-    //       for true and false keywords, and removing the
-    //       boolean token type
-    case .identifier, .string, .numeric, .boolean:
-        tokenCursorCopy += 1
-        return .success(tokenCursorCopy, Expression.term(maybeTermToken))
+    // First we need to see parse an expression, whether it's a term
+    // or a binary expression, and possibly enclosed by parentheses
+    switch parseToken(tokens, tokenCursorCopy, .symbol(.leftParenthesis)) {
+    case .success(let newTokenCursor, _):
+        tokenCursorCopy = newTokenCursor
+
+        switch parseExpression(tokens, tokenCursorCopy, delimeters + [TokenKind.symbol(.rightParenthesis)], minimumBindingPower) {
+        case .success(let newTokenCursor, let newExpression):
+            expression = newExpression
+            tokenCursorCopy = newTokenCursor
+        default:
+            return .failure("Expected expression after parenthesis")
+        }
+
+        switch parseToken(tokens, tokenCursorCopy, .symbol(.rightParenthesis)) {
+        case .success(let newTokenCursor, _):
+            tokenCursorCopy = newTokenCursor
+        default:
+            return .failure("Expected right parenthesis")
+        }
     default:
-        return .failure("Term expression not found")
+        switch parseTermExpression(tokens, tokenCursorCopy) {
+        case .success(let newTokenCursor, let termExpression):
+            expression = termExpression
+            tokenCursorCopy = newTokenCursor
+        default:
+            return .failure("Could not parse expression")
+        }
     }
+
+    // OK... now we've got an expression at this point;
+    // now we need to see if we've got just a term expression,
+    // which will be "terminated" by a delimiting token,
+    // such as the FROM or AS keyword, or a binary expression.
+    var lastTokenCursor = tokenCursorCopy
+
+outer:
+    while tokenCursorCopy < tokens.count {
+        // now see if the next token delimits it...
+        for delimeter in delimeters {
+            if case .success = parseToken(tokens, tokenCursorCopy, delimeter) {
+                // It does, so we're done parsing the expression
+                break outer
+            }
+        }
+
+        // If we got here, then we still have some processing to do;
+        // check for a binary operator...
+        let binaryOperators: [TokenKind] = [
+            .keyword(.and),
+            .keyword(.or),
+            .symbol(.equals),
+            .symbol(.notEquals),
+            .symbol(.concatenate),
+            .symbol(.plus),
+            .symbol(.asterisk),
+        ]
+
+        var binaryOperator: Token? = nil
+        for tokenKind in binaryOperators {
+            if case .success(let newTokenCursor, let token) = parseToken(tokens, tokenCursorCopy, tokenKind) {
+                tokenCursorCopy = newTokenCursor
+                binaryOperator = token
+                break
+            }
+        }
+
+        if binaryOperator == nil {
+            return .failure("Expected binary opeator")
+        }
+
+        // .. get its binding power and check it against the minimum binding
+        // power passed in...
+        let operatorBindingPower = bindingPower(binaryOperator!)
+        if operatorBindingPower < minimumBindingPower {
+            // If we're here, then we encountered an expression like
+            // 1 * 2 + 3, where + has lower precedence than *. Moreover,
+            // we would only get here if we've recursed at least once
+            // and in this example, we'd return 1 * 2 as the left hand
+            // expression in the outer call.
+            tokenCursorCopy = lastTokenCursor
+            break
+        }
+
+        // If we're here, then we need to parse the expression on the
+        // right hand side of the binary operator parsed just before
+        switch parseExpression(tokens, tokenCursorCopy, delimeters, operatorBindingPower) {
+        case .success(let newTokenCursor, let newExpression):
+            tokenCursorCopy = newTokenCursor
+            lastTokenCursor = tokenCursorCopy
+            expression = .binary(expression, newExpression, binaryOperator!)
+        default:
+            return .failure("Expected expression after binary operator")
+        }
+    }
+
+    return .success(tokenCursorCopy, expression)
 }
 
 // We expect each item in the list of select items to be in the form:
@@ -56,7 +170,8 @@ func parseSelectItems(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResul
             items.append(.star)
             tokenCursorCopy += 1
         } else {
-            guard case .success(let newTokenCursorCopy, let expression) = parseExpression(tokens, tokenCursorCopy) else {
+            let delimiters: [TokenKind] = [.keyword(.from), .keyword(.as), .symbol(.comma)]
+            guard case .success(let newTokenCursorCopy, let expression) = parseExpression(tokens, tokenCursorCopy, delimiters, 0) else {
                 return .failure("Expression expected but not found")
             }
             tokenCursorCopy = newTokenCursorCopy
@@ -218,7 +333,8 @@ func parseInsertValues(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResu
     var expressions: [Expression] = []
 
     while tokenCursorCopy < tokens.count {
-        guard case .success(let newTokenCursorCopy, let expression) = parseExpression(tokens, tokenCursorCopy) else {
+        let delimiters: [TokenKind] = [.symbol(.comma), .symbol(.rightParenthesis)]
+        guard case .success(let newTokenCursorCopy, let expression) = parseExpression(tokens, tokenCursorCopy, delimiters, 0) else {
             return .failure("Expression expected but not found")
         }
         expressions.append(expression)
@@ -342,4 +458,27 @@ func parse(_ source: String) -> ParseResult {
     }
 
     return .success(statements)
+}
+
+func bindingPower(_ token: Token) -> Int {
+    switch token.kind {
+    case .keyword(let keyword):
+        switch keyword {
+        case .and, .or:
+            return 1
+        default:
+            return 0
+        }
+    case .symbol(let symbol):
+        switch symbol {
+        case .equals, .notEquals, .concatenate, .plus:
+            return 3
+        case .asterisk:
+            return 4
+        default:
+            return 0
+        }
+    default:
+        return 0
+    }
 }

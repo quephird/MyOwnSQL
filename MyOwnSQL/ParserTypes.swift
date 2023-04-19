@@ -5,8 +5,9 @@
 //  Created by Danielle Kefford on 2/1/23.
 //
 
-enum Expression: Equatable {
+indirect enum Expression: Equatable {
     case term(Token)
+    case binary(Expression, Expression, Token)
 }
 
 enum SelectItem: Equatable {
