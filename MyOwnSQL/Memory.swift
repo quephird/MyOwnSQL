@@ -137,112 +137,184 @@ class MemoryBackend {
             throw StatementError.tableDoesNotExist(tableName)
         }
 
-        // First we need to produce a list of column/alias names...
-        for (i, item) in select.items.enumerated() {
-            switch item {
-            case .expression(.term(let token)):
-                switch token.kind {
-                case .boolean:
-                    columns.append(Column("col_\(i)", .boolean))
-                case .string:
-                    columns.append(Column("col_\(i)", .text))
-                case .numeric:
-                    columns.append(Column("col_\(i)", .int))
-                case .identifier(let requestedColumnName):
-                    if !table.columnNames.contains(requestedColumnName) {
-                        throw StatementError.columnDoesNotExist(requestedColumnName)
-                    } else {
-                        for (i, columnName) in table.columnNames.enumerated() {
-                            if requestedColumnName == columnName {
-                                columns.append(Column(requestedColumnName, table.columnTypes[i]))
-                                break
-                            }
-                        }
-                    }
-                default:
-                    throw StatementError.misc("Unable to handle this kind of token")
-                }
-            case .expressionWithAlias(.term(let token), let aliasToken):
-                guard case .identifier(let alias) = aliasToken.kind else {
-                    throw StatementError.misc("Bad alias token encountered")
-                }
-
-                switch token.kind {
-                case .boolean:
-                    columns.append(Column(alias, .boolean))
-                case .string:
-                    columns.append(Column(alias, .text))
-                case .numeric:
-                    columns.append(Column(alias, .int))
-                case .identifier(let requestedColumnName):
-                    if !table.columnNames.contains(requestedColumnName) {
-                        throw StatementError.columnDoesNotExist(requestedColumnName)
-                    } else {
-                        for (i, columnName) in table.columnNames.enumerated() {
-                            if requestedColumnName == columnName {
-                                columns.append(Column(alias, table.columnTypes[i]))
-                                break
-                            }
-                        }
-                    }
-                default:
-                    throw StatementError.misc("Unable to handle this kind of token")
-                }
-            case .star:
-                for (i, columnName) in table.columnNames.enumerated() {
-                    columns.append(Column(columnName, table.columnTypes[i]))
-                }
-            default:
-                throw StatementError.misc("Cannot handle this kind of expression")
-            }
-        }
-
-        // ... then we can produce the result set...
+        var isFirstRow = true
         for tableRow in table.data {
             var resultRow: [MemoryCell] = []
 
-            for item in select.items {
+            for (i, item) in select.items.enumerated() {
                 switch item {
-                case .expression(.term(let token)):
-                    switch token.kind {
-                    case .boolean, .numeric, .string:
-                        resultRow.append(makeMemoryCell(token)!)
-                    case .identifier(let requestedColumnName):
-                        for (i, columnName) in table.columnNames.enumerated() {
-                            if requestedColumnName == columnName {
-                                resultRow.append(tableRow[i])
-                                break
+                case .expression(let expression):
+                    guard let value = evaluateExpression(expression, table, tableRow) else {
+                        throw StatementError.misc("Unable to evaulate expression")
+                    }
+
+                    if isFirstRow {
+                        if case .term(let token) = expression, case .identifier(let requestedColumnName) = token.kind {
+                            if !table.columnNames.contains(requestedColumnName) {
+                                throw StatementError.columnDoesNotExist(requestedColumnName)
+                            } else {
+                                for (i, columnName) in table.columnNames.enumerated() {
+                                    if requestedColumnName == columnName {
+                                        columns.append(Column(columnName, table.columnTypes[i]))
+                                        break
+                                    }
+                                }
+                            }
+                        } else {
+                            switch value {
+                            case .intValue:
+                                columns.append(Column("col_\(i)", .int))
+                            case .textValue:
+                                columns.append(Column("col_\(i)", .text))
+                            case .booleanValue:
+                                columns.append(Column("col_\(i)", .boolean))
                             }
                         }
-                    default:
-                        throw StatementError.misc("Unable to handle this kind of token")
                     }
-                case .expressionWithAlias(.term(let expressionToken), _):
-                    switch expressionToken.kind {
-                    case .boolean, .numeric, .string:
-                        resultRow.append(makeMemoryCell(expressionToken)!)
-                    case .identifier(let requestedColumnName):
-                        for (i, columnName) in table.columnNames.enumerated() {
-                            if requestedColumnName == columnName {
-                                resultRow.append(tableRow[i])
-                                break
-                            }
+
+                    resultRow.append(value)
+                case .expressionWithAlias(let expression, let aliasToken):
+                    guard let value = evaluateExpression(expression, table, tableRow) else {
+                        throw StatementError.misc("Unable to evaulate expression")
+                    }
+
+                    if isFirstRow {
+                        guard case .identifier(let alias) = aliasToken.kind else {
+                            throw StatementError.misc("Bad alias token encountered")
                         }
-                    default:
-                        throw StatementError.misc("Unable to handle this kind of token")
+
+                        switch value {
+                        case .intValue:
+                            columns.append(Column(alias, .int))
+                        case .textValue:
+                            columns.append(Column(alias, .text))
+                        case .booleanValue:
+                            columns.append(Column(alias, .boolean))
+                        }
                     }
+
+                    resultRow.append(value)
                 case .star:
+                    if isFirstRow {
+                        for (i, columnName) in table.columnNames.enumerated() {
+                            columns.append(Column(columnName, table.columnTypes[i]))
+                        }
+                    }
                     for (i, _) in table.columnNames.enumerated() {
                         resultRow.append(tableRow[i])
                     }
-                default:
-                    throw StatementError.misc("Unable to handle this kind of expression")
                 }
             }
-
+            isFirstRow = false
             resultRows.append(resultRow)
         }
         return ResultSet(columns, resultRows)
+    }
+}
+
+func evaluateExpression(_ expr: Expression, _ table: Table, _ tableRow: [MemoryCell]) -> MemoryCell? {
+    switch expr {
+    case .term(let token):
+        switch token.kind {
+        case .string(let value):
+            return .textValue(value)
+        case .numeric(let value):
+            // TODO: Here is where we should endeavor to try
+            //       to create a float value if we can't create
+            //       an int
+            if let value = Int(value) {
+                return .intValue(value)
+            } else {
+                // TODO: What should this return to indicate a problem?
+                return nil
+            }
+        case .boolean(let value):
+            switch value {
+            case "true":
+                return .booleanValue(true)
+            default:
+                return .booleanValue(false)
+            }
+        case .identifier(let requestedColumnName):
+            for (i, columnName) in table.columnNames.enumerated() {
+                if requestedColumnName == columnName {
+                    return tableRow[i]
+                }
+            }
+            return nil
+        default:
+            return nil
+        }
+    case .binary(let leftExpr, let rightExpr, let operatorToken):
+        guard let leftValue = evaluateExpression(leftExpr, table, tableRow) else {
+            return nil
+        }
+
+        guard let rightValue = evaluateExpression(rightExpr, table, tableRow) else {
+            return nil
+        }
+
+        switch operatorToken.kind {
+        case .keyword(.and):
+            switch (leftValue, rightValue) {
+            case (.booleanValue(let leftBool), .booleanValue(let rightBool)):
+                return .booleanValue(leftBool && rightBool)
+            default:
+                return nil
+            }
+        case .keyword(.or):
+            switch (leftValue, rightValue) {
+            case (.booleanValue(let leftBool), .booleanValue(let rightBool)):
+                return .booleanValue(leftBool || rightBool)
+            default:
+                return nil
+            }
+        case .symbol(.plus):
+            switch (leftValue, rightValue) {
+            case (.intValue(let leftInt), .intValue(let rightInt)):
+                return .intValue(leftInt + rightInt)
+            default:
+                return nil
+            }
+        case .symbol(.asterisk):
+            switch (leftValue, rightValue) {
+            case (.intValue(let leftInt), .intValue(let rightInt)):
+                return .intValue(leftInt * rightInt)
+            default:
+                return nil
+            }
+        case .symbol(.concatenate):
+            switch (leftValue, rightValue) {
+            case (.textValue(let leftText), .textValue(let rightText)):
+                return .textValue(leftText + rightText)
+            default:
+                return nil
+            }
+        case .symbol(.equals):
+            switch (leftValue, rightValue) {
+            case (.booleanValue(let leftBool), .booleanValue(let rightBool)):
+                return .booleanValue(leftBool == rightBool)
+            case (.intValue(let leftInt), .intValue(let rightInt)):
+                return .booleanValue(leftInt == rightInt)
+            case (.textValue(let leftText), .textValue(let rightText)):
+                return .booleanValue(leftText == rightText)
+            default:
+                return nil
+            }
+        case .symbol(.notEquals):
+            switch (leftValue, rightValue) {
+            case (.booleanValue(let leftBool), .booleanValue(let rightBool)):
+                return .booleanValue(leftBool != rightBool)
+            case (.intValue(let leftInt), .intValue(let rightInt)):
+                return .booleanValue(leftInt != rightInt)
+            case (.textValue(let leftText), .textValue(let rightText)):
+                return .booleanValue(leftText != rightText)
+            default:
+                return nil
+            }
+        default:
+            return nil
+        }
     }
 }
 
