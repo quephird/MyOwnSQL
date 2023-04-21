@@ -146,7 +146,7 @@ class MemoryBackend {
                     throw StatementError.misc("Unable to evaulate expression in WHERE clause")
                 }
 
-                // TODO: Need to move this logic to just after the parsing stage (static analysis)
+                // TODO: Need to move this logic to just after the parsing stage
                 switch value {
                 case .booleanValue(let booleanValue):
                     if !booleanValue {
@@ -160,6 +160,7 @@ class MemoryBackend {
             for (i, item) in select.items.enumerated() {
                 switch item {
                 case .expression(let expression):
+                    // TODO: Need to catch invalid columns beforehand
                     guard let value = evaluateExpression(expression, table, tableRow) else {
                         throw StatementError.misc("Unable to evaulate expression in SELECT")
                     }

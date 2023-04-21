@@ -14,6 +14,7 @@ enum StatementError: Error, Equatable, LocalizedError {
     case columnDoesNotExist(String)
     case notEnoughValues
     case tooManyValues
+    case invalidExpression
     case misc(String)
 
     var errorDescription: String? {
@@ -30,6 +31,8 @@ enum StatementError: Error, Equatable, LocalizedError {
             return "Not enough values"
         case .tooManyValues:
             return "Too many values"
+        case .invalidExpression:
+            return "Invalid expression"
         case .misc(let message):
             return message
         }

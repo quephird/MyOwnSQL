@@ -29,6 +29,10 @@ func parseToken(_ tokens: [Token], _ tokenCursor: Int, _ tokenKind: TokenKind) -
 }
 
 func parseTermExpression(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<Expression> {
+    if tokenCursor >= tokens.count {
+        return .failure("Expected more tokens")
+    }
+
     let maybeTermToken = tokens[tokenCursor]
 
     switch maybeTermToken.kind {

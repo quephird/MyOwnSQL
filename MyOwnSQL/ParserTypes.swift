@@ -39,6 +39,12 @@ struct SelectStatement: Equatable {
         self.table = table
         self.items = items
     }
+
+    init(_ table: Token, _ items: [SelectItem], _ whereClause: Expression) {
+        self.table = table
+        self.items = items
+        self.whereClause = whereClause
+    }
 }
 
 struct InsertStatement: Equatable {
