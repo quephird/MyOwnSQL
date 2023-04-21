@@ -213,6 +213,31 @@ class ParserTests: XCTestCase {
         XCTAssertEqual(statement, expectedStatement)
     }
 
+    func testParseSelectStatementWithWhereClause() throws {
+        let source = "SELECT foo FROM bar WHERE baz = 1"
+        guard case .success(let tokens) = lex(source) else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
+
+        guard case .success(_, .select(let statement)) = parseSelectStatement(tokens, 0) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+        let expectedStatement = SelectStatement(
+            Token(kind: .identifier("bar"), location: Location(line: 0, column: 16)),
+            [
+                .expression(.term(Token(kind: .identifier("foo"), location: Location(line: 0, column: 7))))
+            ],
+            .binary(
+                .term(Token(kind: .identifier("baz"), location: Location(line: 0, column: 26))),
+                .term(Token(kind: .numeric("1"), location: Location(line: 0, column: 32))),
+                Token(kind: .symbol(.equals), location: Location(line: 0, column: 30))
+            )
+        )
+        XCTAssertEqual(statement, expectedStatement)
+    }
+
     func testInvalidSelectStatementsShouldFailToParse() throws {
         for source in [
             "SELECT FROM bar",
@@ -221,6 +246,7 @@ class ParserTests: XCTestCase {
             "SELECT 42 'forty-two' FROM foo",
             "SELECT 42 AS FROM foo",
             "SELECT * AS everything FROM FOO",
+            "SELECT * FROM foo WHERE",
         ] {
             guard case .success(let tokens) = lex(source) else {
                 XCTFail("Lexing failed unexpectedly")

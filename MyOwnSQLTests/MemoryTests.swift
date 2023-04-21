@@ -255,6 +255,59 @@ class MemoryTests: XCTestCase {
         XCTAssertEqual(actualRow, expectedRow)
     }
 
+    func testSelectWithWhereClause() throws {
+        // Create table manually first...
+        let columnNames = ["id", "description", "is_fabulous"]
+        let columnTypes: [ColumnType] = [.int, .text, .boolean]
+        let table = Table(columnNames, columnTypes)
+
+        // Now create some data manually...
+        let rows: [[MemoryCell]] = [
+            [
+                .intValue(1),
+                .textValue("Long black velvet gown from Lauren"),
+                .booleanValue(true),
+            ],
+            [
+                .intValue(2),
+                .textValue("Linen shirt"),
+                .booleanValue(false),
+            ],
+        ]
+        for row in rows {
+            table.data.append(row)
+        }
+
+        let database = MemoryBackend()
+        database.tables = ["clothes": table]
+
+        // ... and _now_ SELECT a set of expressions from the table...
+        let source = "SELECT id, description FROM clothes WHERE is_fabulous = true;"
+        guard case .success(let statements) = parse(source) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+        guard case .select(let statement) = statements[0] else {
+            XCTFail("Unexpected statement type encountered")
+            return
+        }
+        let resultSet = try database.selectTable(statement)
+
+        let expectedColumnNames = ["id", "description"]
+        let actualColumnNames = resultSet.columns.map { column in
+            column.name
+        }
+        XCTAssertEqual(actualColumnNames, expectedColumnNames)
+
+        XCTAssertEqual(resultSet.rows.count, 1)
+        let expectedRow: [MemoryCell] = [
+            .intValue(1),
+            .textValue("Long black velvet gown from Lauren"),
+        ]
+        let actualRow = resultSet.rows[0]
+        XCTAssertEqual(actualRow, expectedRow)
+    }
+
     func testSelectFailsForNonexistentTable() throws {
         // Create table manually first...
         let columnNames = ["id", "description", "is_in_season"]

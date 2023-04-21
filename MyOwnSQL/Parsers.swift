@@ -29,6 +29,10 @@ func parseToken(_ tokens: [Token], _ tokenCursor: Int, _ tokenKind: TokenKind) -
 }
 
 func parseTermExpression(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<Expression> {
+    if tokenCursor >= tokens.count {
+        return .failure("Expected more tokens")
+    }
+
     let maybeTermToken = tokens[tokenCursor]
 
     switch maybeTermToken.kind {
@@ -207,6 +211,7 @@ func parseSelectItems(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResul
 func parseSelectStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<Statement> {
     var tokenCursorCopy = tokenCursor
     var items: [SelectItem]
+    var whereClause: Expression?
 
     if tokens[tokenCursorCopy].kind != TokenKind.keyword(.select) {
         return .noMatch
@@ -234,7 +239,22 @@ func parseSelectStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
     let table = tokens[tokenCursorCopy]
     tokenCursorCopy += 1
 
-    let statement = SelectStatement(table, items)
+    var statement = SelectStatement(table, items)
+
+    switch parseToken(tokens, tokenCursorCopy, .keyword(.where)) {
+    case .success(let newTokenCursor, _):
+        switch parseExpression(tokens, newTokenCursor, [.symbol(.semicolon)], 0) {
+        case .success(let newTokenCursor, let expression):
+            tokenCursorCopy = newTokenCursor
+            whereClause = expression
+        default:
+            return .failure("Could not parse expression for WHERE clause")
+        }
+    default:
+        whereClause = nil
+    }
+    statement.whereClause = whereClause
+
     return .success(tokenCursorCopy, .select(statement))
 }
 
