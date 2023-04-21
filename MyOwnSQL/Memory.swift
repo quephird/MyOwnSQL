@@ -141,11 +141,27 @@ class MemoryBackend {
         for tableRow in table.data {
             var resultRow: [MemoryCell] = []
 
+            if let whereClause = select.whereClause {
+                guard let value = evaluateExpression(whereClause, table, tableRow) else {
+                    throw StatementError.misc("Unable to evaulate expression in WHERE clause")
+                }
+
+                // TODO: Need to move this logic to just after the parsing stage (static analysis)
+                switch value {
+                case .booleanValue(let booleanValue):
+                    if !booleanValue {
+                        continue
+                    }
+                default:
+                    throw StatementError.misc("WHERE clause is not a boolean expression")
+                }
+            }
+
             for (i, item) in select.items.enumerated() {
                 switch item {
                 case .expression(let expression):
                     guard let value = evaluateExpression(expression, table, tableRow) else {
-                        throw StatementError.misc("Unable to evaulate expression")
+                        throw StatementError.misc("Unable to evaulate expression in SELECT")
                     }
 
                     if isFirstRow {
