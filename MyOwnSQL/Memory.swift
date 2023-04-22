@@ -50,6 +50,11 @@ class Table {
     }
 }
 
+enum TypeCheckResult {
+    case success(ColumnType)
+    case failure(StatementError)
+}
+
 class MemoryBackend {
     var tables: [String: Table] = [:]
 
@@ -138,36 +143,38 @@ class MemoryBackend {
         }
 
         for item in select.items {
-            // TODO: Need to validate soundness of expressions
             switch item {
             case .expression(let expression):
-                try validateIdentifiers(expression, table)
+                if case .failure(let error) = typeCheck(expression, table) {
+                    throw error
+                }
             case .expressionWithAlias(let expression, _):
-                try validateIdentifiers(expression, table)
+                if case .failure(let error) = typeCheck(expression, table) {
+                    throw error
+                }
             case .star:
                 continue
             }
         }
 
-        // TODO: Need to check that WHERE clause is in fact a boolean expression
+        if let whereClause = select.whereClause {
+            switch typeCheck(whereClause, table) {
+            case .failure(let error):
+                throw error
+            case .success(let type):
+                if type != .boolean {
+                    throw StatementError.whereClauseNotBooleanExpression
+                }
+            }
+        }
 
         var isFirstRow = true
         for tableRow in table.data {
             var resultRow: [MemoryCell] = []
 
             if let whereClause = select.whereClause {
-                guard let value = evaluateExpression(whereClause, table, tableRow) else {
-                    throw StatementError.misc("Unable to evaulate expression in WHERE clause")
-                }
-
-                // TODO: Need to move this logic to just after the parsing stage
-                switch value {
-                case .booleanValue(let booleanValue):
-                    if !booleanValue {
-                        continue
-                    }
-                default:
-                    throw StatementError.misc("WHERE clause is not a boolean expression")
+                if case .booleanValue(let keepRow) = evaluateExpression(whereClause, table, tableRow), !keepRow {
+                    continue
                 }
             }
 
@@ -237,20 +244,72 @@ class MemoryBackend {
         return ResultSet(columns, resultRows)
     }
 
-    func validateIdentifiers(_ expression: Expression, _ table: Table) throws {
+    func typeCheck(_ expression: Expression, _ table: Table) -> TypeCheckResult {
         switch expression {
         case .term(let token):
             switch token.kind {
+            case .boolean:
+                return .success(.boolean)
+            case .numeric:
+                // TODO: We need to support doubles at some point
+                return .success(.int)
+            case .string:
+                return .success(.text)
             case .identifier(let requestedColumnName):
-                if !table.columnNames.contains(requestedColumnName) {
-                    throw StatementError.columnDoesNotExist(requestedColumnName)
+                for (i, columnName) in table.columnNames.enumerated() {
+                    if requestedColumnName == columnName {
+                        return .success(table.columnTypes[i])
+                    }
+                }
+                return .failure(StatementError.columnDoesNotExist(requestedColumnName))
+            default:
+                return .failure(StatementError.invalidExpression)
+            }
+        case .binary(let leftExpr, let rightExpr, let operatorToken):
+            var leftType: ColumnType
+            switch typeCheck(leftExpr, table) {
+            case .failure(let error):
+                return .failure(error)
+            case .success(let type):
+                leftType = type
+            }
+
+            var rightType: ColumnType
+            switch typeCheck(rightExpr, table) {
+            case .failure(let error):
+                return .failure(error)
+            case .success(let type):
+                rightType = type
+            }
+
+            switch operatorToken.kind {
+            case .keyword(.and), .keyword(.or):
+                if leftType == .boolean && rightType == .boolean {
+                    return .success(.boolean)
+                } else {
+                    return .failure(StatementError.invalidExpression)
+                }
+            case .symbol(.equals), .symbol(.notEquals):
+                if leftType == rightType {
+                    return .success(.boolean)
+                } else {
+                    return .failure(StatementError.invalidExpression)
+                }
+            case .symbol(.plus), .symbol(.asterisk):
+                if leftType == .int && rightType == .int {
+                    return .success(.int)
+                } else {
+                    return .failure(StatementError.invalidExpression)
+                }
+            case .symbol(.concatenate):
+                if leftType == .text && rightType == .text {
+                    return .success(.text)
+                } else {
+                    return .failure(StatementError.invalidExpression)
                 }
             default:
-                return
+                return .failure(StatementError.invalidExpression)
             }
-        case .binary(let leftExpr, let rightExpr, _):
-            try validateIdentifiers(leftExpr, table)
-            try validateIdentifiers(rightExpr, table)
         }
     }
 }

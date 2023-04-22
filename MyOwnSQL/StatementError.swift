@@ -12,6 +12,7 @@ enum StatementError: Error, Equatable, LocalizedError {
     case tableAlreadyExists(String)
     case tableDoesNotExist(String)
     case columnDoesNotExist(String)
+    case whereClauseNotBooleanExpression
     case notEnoughValues
     case tooManyValues
     case invalidExpression
@@ -27,6 +28,8 @@ enum StatementError: Error, Equatable, LocalizedError {
             return "Table \(tableName) does not exist"
         case .columnDoesNotExist(let columnName):
             return "Column \(columnName) does not exist"
+        case .whereClauseNotBooleanExpression:
+            return "WHERE clause must be boolean expression"
         case .notEnoughValues:
             return "Not enough values"
         case .tooManyValues:
