@@ -46,13 +46,6 @@ func parseTermExpression(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperRe
     }
 }
 
-// NOTA BENE: This function will eventually need to take another parameter
-//            denoting which tokens should be considered to delimit the expression,
-//            primarily because parseSelectItem and parseInsertValues share this
-//            function and those delimiting tokens differ between them, but also
-//            because when we tackle parsing of binary expressions, we will not
-//            necessarily know how many tokens comprise them. For now, we can get
-//            away with just looking at the one current token.
 func parseExpression(_ tokens: [Token], _ tokenCursor: Int, _ delimeters: [TokenKind], _ minimumBindingPower: Int) -> ParseHelperResult<Expression> {
     var tokenCursorCopy = tokenCursor
     var expression: Expression
@@ -491,10 +484,12 @@ func bindingPower(_ token: Token) -> Int {
         }
     case .symbol(let symbol):
         switch symbol {
-        case .equals, .notEquals, .concatenate, .plus:
+        case .equals, .notEquals:
             return 3
-        case .asterisk:
+        case .concatenate, .plus:
             return 4
+        case .asterisk:
+            return 5
         default:
             return 0
         }
