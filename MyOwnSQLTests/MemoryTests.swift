@@ -164,7 +164,6 @@ class MemoryTests: XCTestCase {
         }
     }
 
-
     func testSelectLiteralsStatement() throws {
         // Create table manually first...
         let columnNames = ["id", "description", "is_in_season"]
@@ -351,6 +350,76 @@ class MemoryTests: XCTestCase {
 
         XCTAssertThrowsError(try database.selectTable(statement)) { error in
             XCTAssertEqual(error as! StatementError, .columnDoesNotExist("does_not_exist"))
+        }
+    }
+
+    func testSelectFailsForWhereClauseReferencingNonexistentColumn() throws {
+        // Create table manually first...
+        let columnNames = ["id", "description", "is_in_season"]
+        let columnTypes: [ColumnType] = [.int, .text, .boolean]
+        let table = Table(columnNames, columnTypes)
+        let database = MemoryBackend()
+        database.tables = ["dresses": table]
+
+        let source = "SELECT * FROM dresses WHERE label = 'Lauren';"
+        guard case .success(let statements) = parse(source) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+        guard case .select(let statement) = statements[0] else {
+            XCTFail("Unexpected statement type encountered")
+            return
+        }
+
+        XCTAssertThrowsError(try database.selectTable(statement)) { error in
+            XCTAssertEqual(error as! StatementError, .columnDoesNotExist("label"))
+        }
+    }
+
+    func testSelectFailsForWhereClauseThatIsNotBooleanExpression() throws {
+        // Create table manually first...
+        let columnNames = ["id", "description", "is_in_season"]
+        let columnTypes: [ColumnType] = [.int, .text, .boolean]
+        let table = Table(columnNames, columnTypes)
+        let database = MemoryBackend()
+        database.tables = ["dresses": table]
+
+        let source = "SELECT * FROM dresses WHERE 42;"
+        guard case .success(let statements) = parse(source) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+        guard case .select(let statement) = statements[0] else {
+            XCTFail("Unexpected statement type encountered")
+            return
+        }
+
+        XCTAssertThrowsError(try database.selectTable(statement)) { error in
+            XCTAssertEqual(error as! StatementError, .whereClauseNotBooleanExpression)
+        }
+    }
+
+    func testSelectFailsForWhereClauseThatIsNotValidExpression() throws {
+        // Create table manually first...
+        let columnNames = ["id", "description", "is_in_season"]
+        let columnTypes: [ColumnType] = [.int, .text, .boolean]
+        let table = Table(columnNames, columnTypes)
+        let database = MemoryBackend()
+        database.tables = ["dresses": table]
+
+        // `id` is an int, and so the WHERE clause should be invalid
+        let source = "SELECT * FROM dresses WHERE id = '42';"
+        guard case .success(let statements) = parse(source) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+        guard case .select(let statement) = statements[0] else {
+            XCTFail("Unexpected statement type encountered")
+            return
+        }
+
+        XCTAssertThrowsError(try database.selectTable(statement)) { error in
+            XCTAssertEqual(error as! StatementError, .invalidExpression)
         }
     }
 }
