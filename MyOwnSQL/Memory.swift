@@ -137,6 +137,20 @@ class MemoryBackend {
             throw StatementError.tableDoesNotExist(tableName)
         }
 
+        for item in select.items {
+            // TODO: Need to validate soundness of expressions
+            switch item {
+            case .expression(let expression):
+                try validateIdentifiers(expression, table)
+            case .expressionWithAlias(let expression, _):
+                try validateIdentifiers(expression, table)
+            case .star:
+                continue
+            }
+        }
+
+        // TODO: Need to check that WHERE clause is in fact a boolean expression
+
         var isFirstRow = true
         for tableRow in table.data {
             var resultRow: [MemoryCell] = []
@@ -160,21 +174,16 @@ class MemoryBackend {
             for (i, item) in select.items.enumerated() {
                 switch item {
                 case .expression(let expression):
-                    // TODO: Need to catch invalid columns beforehand
                     guard let value = evaluateExpression(expression, table, tableRow) else {
-                        throw StatementError.misc("Unable to evaulate expression in SELECT")
+                        throw StatementError.misc("Unable to evaluate expression in SELECT")
                     }
 
                     if isFirstRow {
                         if case .term(let token) = expression, case .identifier(let requestedColumnName) = token.kind {
-                            if !table.columnNames.contains(requestedColumnName) {
-                                throw StatementError.columnDoesNotExist(requestedColumnName)
-                            } else {
-                                for (i, columnName) in table.columnNames.enumerated() {
-                                    if requestedColumnName == columnName {
-                                        columns.append(Column(columnName, table.columnTypes[i]))
-                                        break
-                                    }
+                            for (i, columnName) in table.columnNames.enumerated() {
+                                if requestedColumnName == columnName {
+                                    columns.append(Column(columnName, table.columnTypes[i]))
+                                    break
                                 }
                             }
                         } else {
@@ -226,6 +235,23 @@ class MemoryBackend {
             resultRows.append(resultRow)
         }
         return ResultSet(columns, resultRows)
+    }
+
+    func validateIdentifiers(_ expression: Expression, _ table: Table) throws {
+        switch expression {
+        case .term(let token):
+            switch token.kind {
+            case .identifier(let requestedColumnName):
+                if !table.columnNames.contains(requestedColumnName) {
+                    throw StatementError.columnDoesNotExist(requestedColumnName)
+                }
+            default:
+                return
+            }
+        case .binary(let leftExpr, let rightExpr, _):
+            try validateIdentifiers(leftExpr, table)
+            try validateIdentifiers(rightExpr, table)
+        }
     }
 }
 
