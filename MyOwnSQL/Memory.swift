@@ -143,19 +143,22 @@ class MemoryBackend {
         }
 
         for item in select.items {
-            // TODO: Need to validate soundness of expressions
             switch item {
             case .expression(let expression):
-                try validateIdentifiers(expression, table)
+                if case .failure(let error) = typeCheck(expression, table) {
+                    throw error
+                }
             case .expressionWithAlias(let expression, _):
-                try validateIdentifiers(expression, table)
+                if case .failure(let error) = typeCheck(expression, table) {
+                    throw error
+                }
             case .star:
                 continue
             }
         }
 
         if let whereClause = select.whereClause {
-            switch typeOf(whereClause, table) {
+            switch typeCheck(whereClause, table) {
             case .failure(let error):
                 throw error
             case .success(let type):
@@ -168,6 +171,12 @@ class MemoryBackend {
         var isFirstRow = true
         for tableRow in table.data {
             var resultRow: [MemoryCell] = []
+
+            if let whereClause = select.whereClause {
+                if case .booleanValue(let keepRow) = evaluateExpression(whereClause, table, tableRow), !keepRow {
+                    continue
+                }
+            }
 
             for (i, item) in select.items.enumerated() {
                 switch item {
@@ -235,24 +244,7 @@ class MemoryBackend {
         return ResultSet(columns, resultRows)
     }
 
-    func validateIdentifiers(_ expression: Expression, _ table: Table) throws {
-        switch expression {
-        case .term(let token):
-            switch token.kind {
-            case .identifier(let requestedColumnName):
-                if !table.columnNames.contains(requestedColumnName) {
-                    throw StatementError.columnDoesNotExist(requestedColumnName)
-                }
-            default:
-                return
-            }
-        case .binary(let leftExpr, let rightExpr, _):
-            try validateIdentifiers(leftExpr, table)
-            try validateIdentifiers(rightExpr, table)
-        }
-    }
-
-    func typeOf(_ expression: Expression, _ table: Table) -> TypeCheckResult {
+    func typeCheck(_ expression: Expression, _ table: Table) -> TypeCheckResult {
         switch expression {
         case .term(let token):
             switch token.kind {
@@ -275,7 +267,7 @@ class MemoryBackend {
             }
         case .binary(let leftExpr, let rightExpr, let operatorToken):
             var leftType: ColumnType
-            switch typeOf(leftExpr, table) {
+            switch typeCheck(leftExpr, table) {
             case .failure(let error):
                 return .failure(error)
             case .success(let type):
@@ -283,7 +275,7 @@ class MemoryBackend {
             }
 
             var rightType: ColumnType
-            switch typeOf(rightExpr, table) {
+            switch typeCheck(rightExpr, table) {
             case .failure(let error):
                 return .failure(error)
             case .success(let type):
