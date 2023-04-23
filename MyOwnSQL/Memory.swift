@@ -38,7 +38,6 @@ struct ResultSet: Equatable {
 }
 
 class Table {
-    // TODO: Look into OrderedDictionary in swift-collections library
     var columnNames: [String]
     var columnTypes: [ColumnType]
     var data: [[MemoryCell]]
