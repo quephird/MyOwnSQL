@@ -59,7 +59,7 @@ class MemoryTests: XCTestCase {
         XCTAssertEqual(result, .successfulInsert(1))
 
         let dressesTable = database.tables["dresses"]!
-        let dresses = dressesTable.data
+        let dresses = Array(dressesTable.data.values)
         XCTAssertEqual(dresses.count, 1)
 
         let actualDress = dresses[0]

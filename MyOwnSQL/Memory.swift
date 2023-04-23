@@ -5,6 +5,8 @@
 //  Created by Danielle Kefford on 2/7/23.
 //
 
+import Foundation
+
 enum MemoryCell: Equatable {
     case intValue(Int)
     case textValue(String)
@@ -40,12 +42,12 @@ struct ResultSet: Equatable {
 class Table {
     var columnNames: [String]
     var columnTypes: [ColumnType]
-    var data: [[MemoryCell]]
+    var data: [String : [MemoryCell]]
 
     init(_ columnNames: [String], _ columnTypes: [ColumnType]) {
         self.columnNames = columnNames
         self.columnTypes = columnTypes
-        self.data = []
+        self.data = [:]
     }
 }
 
@@ -153,7 +155,8 @@ class MemoryBackend {
                     }
                 }
 
-                table.data.append(newRow)
+                let newRowid = UUID().uuidString
+                table.data[newRowid] = newRow
                 return .successfulInsert(1)
             } else {
                 return .failure(.tableDoesNotExist(tableName))
@@ -201,7 +204,7 @@ class MemoryBackend {
         }
 
         var isFirstRow = true
-        for tableRow in table.data {
+        for tableRow in table.data.values {
             var resultRow: [MemoryCell] = []
 
             if let whereClause = select.whereClause {
