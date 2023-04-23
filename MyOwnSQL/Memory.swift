@@ -17,7 +17,7 @@ enum ColumnType {
     case boolean
 }
 
-struct Column {
+struct Column: Equatable {
     var name: String
     var type: ColumnType
 
@@ -27,7 +27,7 @@ struct Column {
     }
 }
 
-struct ResultSet {
+struct ResultSet: Equatable {
     var columns: [Column]
     var rows: [[MemoryCell]]
 
@@ -55,15 +55,44 @@ enum TypeCheckResult {
     case failure(StatementError)
 }
 
+enum StatementExecutionResult: Equatable {
+    case successfulCreateTable
+    case successfulInsert(Int)
+    case successfulSelect(ResultSet)
+    case failure(StatementError)
+}
+
 class MemoryBackend {
     var tables: [String: Table] = [:]
 
-    func createTable(_ create: CreateStatement) throws {
+    func executeStatements(_ input: String) -> [StatementExecutionResult] {
+        var results: [StatementExecutionResult] = []
+
+        switch parse(input) {
+        case .failure(let errorMessage):
+            print(errorMessage)
+        case .success(let statements):
+            for statement in statements {
+                switch statement {
+                case .create(let createStatement):
+                    results.append(createTable(createStatement))
+                case .insert(let insertStatement):
+                    results.append(insertTable(insertStatement))
+                case .select(let selectStatement):
+                    results.append(selectTable(selectStatement))
+                }
+            }
+        }
+
+        return results
+    }
+
+    func createTable(_ create: CreateStatement) -> StatementExecutionResult {
         guard case .identifier(let tableName) = create.table.kind else {
-            throw StatementError.misc("Invalid token for table name")
+            return .failure(.misc("Invalid token for table name"))
         }
         if self.tables[tableName] != nil {
-            throw StatementError.tableAlreadyExists(tableName)
+            return .failure(.tableAlreadyExists(tableName))
         }
 
         var columnNames: [String] = []
@@ -73,7 +102,7 @@ class MemoryBackend {
             case .identifier(let name):
                 columnNames.append(name)
             default:
-                throw StatementError.misc("Invalid token for column name")
+                return .failure(.misc("Invalid token for column name"))
             }
 
             switch typeToken.kind {
@@ -86,25 +115,26 @@ class MemoryBackend {
                 case .boolean:
                     columnTypes.append(.boolean)
                 default:
-                    throw StatementError.misc("Invalid column type")
+                    return .failure(.misc("Unsupported column type"))
                 }
             default:
-                throw StatementError.misc("Invalid token for column type")
+                return .failure(.misc("Invalid token for column type"))
             }
         }
 
         let newTable = Table(columnNames, columnTypes)
         self.tables[tableName] = newTable
+        return .successfulCreateTable
     }
 
-    func insertTable(_ insert: InsertStatement) throws {
+    func insertTable(_ insert: InsertStatement) -> StatementExecutionResult {
         switch insert.table.kind {
         case .identifier(let tableName):
             if let table = self.tables[tableName] {
                 if insert.items.count < table.columnNames.count {
-                    throw StatementError.notEnoughValues
+                    return .failure(.notEnoughValues)
                 } else if insert.items.count > table.columnNames.count {
-                    throw StatementError.tooManyValues
+                    return .failure(.tooManyValues)
                 }
 
                 var newRow: [MemoryCell] = []
@@ -114,43 +144,43 @@ class MemoryBackend {
                         if let newCell = makeMemoryCell(token) {
                             newRow.append(newCell)
                         } else {
-                            throw StatementError.misc("Unable to create cell value from token")
+                            return .failure(.misc("Unable to create cell value from token"))
                         }
                     default:
-                        throw StatementError.misc("Unable able to handle this kind of expression")
+                        return .failure(.misc("Unable able to handle this kind of expression"))
                     }
                 }
 
                 table.data.append(newRow)
-                return
+                return .successfulInsert(1)
             } else {
-                throw StatementError.tableDoesNotExist(tableName)
+                return .failure(.tableDoesNotExist(tableName))
             }
         default:
-            throw StatementError.misc("Invalid token for table name")
+            return .failure(.misc("Invalid token for table name"))
         }
     }
 
-    func selectTable(_ select: SelectStatement) throws -> ResultSet {
+    func selectTable(_ select: SelectStatement) -> StatementExecutionResult {
         var columns: [Column] = []
         var resultRows: [[MemoryCell]] = []
 
         guard case .identifier(let tableName) = select.table.kind else {
-            throw StatementError.misc("Invalid token for table name")
+            return .failure(.misc("Invalid token for table name"))
         }
         guard let table = self.tables[tableName] else {
-            throw StatementError.tableDoesNotExist(tableName)
+            return .failure(.tableDoesNotExist(tableName))
         }
 
         for item in select.items {
             switch item {
             case .expression(let expression):
                 if case .failure(let error) = typeCheck(expression, table) {
-                    throw error
+                    return .failure(error)
                 }
             case .expressionWithAlias(let expression, _):
                 if case .failure(let error) = typeCheck(expression, table) {
-                    throw error
+                    return .failure(error)
                 }
             case .star:
                 continue
@@ -160,10 +190,10 @@ class MemoryBackend {
         if let whereClause = select.whereClause {
             switch typeCheck(whereClause, table) {
             case .failure(let error):
-                throw error
+                return .failure(error)
             case .success(let type):
                 if type != .boolean {
-                    throw StatementError.whereClauseNotBooleanExpression
+                    return .failure(.whereClauseNotBooleanExpression)
                 }
             }
         }
@@ -182,7 +212,7 @@ class MemoryBackend {
                 switch item {
                 case .expression(let expression):
                     guard let value = evaluateExpression(expression, table, tableRow) else {
-                        throw StatementError.misc("Unable to evaluate expression in SELECT")
+                        return .failure(.misc("Unable to evaluate expression in SELECT"))
                     }
 
                     if isFirstRow {
@@ -208,12 +238,12 @@ class MemoryBackend {
                     resultRow.append(value)
                 case .expressionWithAlias(let expression, let aliasToken):
                     guard let value = evaluateExpression(expression, table, tableRow) else {
-                        throw StatementError.misc("Unable to evaulate expression")
+                        return .failure(.misc("Unable to evaulate expression"))
                     }
 
                     if isFirstRow {
                         guard case .identifier(let alias) = aliasToken.kind else {
-                            throw StatementError.misc("Bad alias token encountered")
+                            return .failure(.misc("Bad alias token encountered"))
                         }
 
                         switch value {
@@ -241,7 +271,7 @@ class MemoryBackend {
             isFirstRow = false
             resultRows.append(resultRow)
         }
-        return ResultSet(columns, resultRows)
+        return .successfulSelect(ResultSet(columns, resultRows))
     }
 
     func typeCheck(_ expression: Expression, _ table: Table) -> TypeCheckResult {
