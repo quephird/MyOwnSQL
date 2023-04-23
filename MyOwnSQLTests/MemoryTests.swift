@@ -319,4 +319,90 @@ class MemoryTests: XCTestCase {
 
         XCTAssertEqual(result, .failure(.invalidExpression))
     }
+
+    func testDeleteAllRows() throws {
+        let database = MemoryBackend()
+        let create = "CREATE TABLE clothes (id int, description text, is_fabulous boolean);"
+        let _ = database.executeStatements(create)
+        let insert1 = "INSERT INTO clothes VALUES (1, 'Long black velvet gown from Lauren', true);"
+        let _ = database.executeStatements(insert1)
+        let insert2 = "INSERT INTO clothes VALUES (2, 'Linen shirt', false);"
+        let _ = database.executeStatements(insert2)
+
+        let delete = "DELETE FROM clothes;"
+        let deleteResults = database.executeStatements(delete)
+        guard let deleteResult = deleteResults.first else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+
+        guard case .successfulDelete(let rowCount) = deleteResult else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+
+        XCTAssertEqual(rowCount, 2)
+
+        // Let's make sure there are indeed no rows left
+        let select = "SELECT * FROM clothes;"
+        let selectResults = database.executeStatements(select)
+        guard let selectResult = selectResults.first else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+
+        guard case .successfulSelect(let resultSet) = selectResult else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+        XCTAssertEqual(resultSet.rows.count, 0)
+    }
+
+    func testDeleteOnlySpecifiedRows() throws {
+        let database = MemoryBackend()
+        let create = "CREATE TABLE clothes (id int, description text, is_fabulous boolean);"
+        let _ = database.executeStatements(create)
+        let insert1 = "INSERT INTO clothes VALUES (1, 'Long black velvet gown from Lauren', true);"
+        let _ = database.executeStatements(insert1)
+        let insert2 = "INSERT INTO clothes VALUES (2, 'Linen shirt', false);"
+        let _ = database.executeStatements(insert2)
+
+        let delete = "DELETE FROM clothes WHERE is_fabulous = false;"
+        let deleteResults = database.executeStatements(delete)
+        guard let deleteResult = deleteResults.first else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+
+        guard case .successfulDelete(let rowCount) = deleteResult else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+
+        XCTAssertEqual(rowCount, 1)
+
+        let select = "SELECT * FROM clothes;"
+        let selectResults = database.executeStatements(select)
+        guard let selectResult = selectResults.first else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+
+        guard case .successfulSelect(let resultSet) = selectResult else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+        XCTAssertEqual(resultSet.rows.count, 1)
+
+        guard let onlyRow = resultSet.rows.first else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+        let expectedRow: [MemoryCell] = [
+            .intValue(1),
+            .textValue("Long black velvet gown from Lauren"),
+            .booleanValue(true)
+        ]
+        XCTAssertEqual(expectedRow, onlyRow)
+    }
 }

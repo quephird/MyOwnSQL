@@ -60,6 +60,7 @@ enum StatementExecutionResult: Equatable {
     case successfulCreateTable
     case successfulInsert(Int)
     case successfulSelect(ResultSet)
+    case successfulDelete(Int)
     case failure(StatementError)
 }
 
@@ -81,9 +82,8 @@ class MemoryBackend {
                     results.append(insertTable(insertStatement))
                 case .select(let selectStatement):
                     results.append(selectTable(selectStatement))
-                case .delete:
-                    // TODO: Implement handler!!!
-                    continue
+                case .delete(let deleteStatement):
+                    results.append(deleteTable(deleteStatement))
                 }
             }
         }
@@ -277,6 +277,44 @@ class MemoryBackend {
             resultRows.append(resultRow)
         }
         return .successfulSelect(ResultSet(columns, resultRows))
+    }
+
+    func deleteTable(_ delete: DeleteStatement) -> StatementExecutionResult {
+        guard case .identifier(let tableName) = delete.table.kind else {
+            return .failure(.misc("Invalid token for table name"))
+        }
+        guard let table = self.tables[tableName] else {
+            return .failure(.tableDoesNotExist(tableName))
+        }
+
+        if let whereClause = delete.whereClause {
+            switch typeCheck(whereClause, table) {
+            case .failure(let error):
+                return .failure(error)
+            case .success(let type):
+                if type != .boolean {
+                    return .failure(.whereClauseNotBooleanExpression)
+                }
+            }
+        }
+
+        var rowids: [String] = []
+        for (rowid, tableRow) in table.data {
+            if let whereClause = delete.whereClause {
+                if case .booleanValue(let deleteRow) = evaluateExpression(whereClause, table, tableRow), deleteRow {
+                    rowids.append(rowid)
+                }
+                continue
+            }
+
+            rowids.append(rowid)
+        }
+
+        for rowid in rowids {
+            table.data[rowid] = nil
+        }
+
+        return .successfulDelete(rowids.count)
     }
 
     func typeCheck(_ expression: Expression, _ table: Table) -> TypeCheckResult {
