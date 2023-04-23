@@ -18,7 +18,7 @@ enum StatementError: Error, Equatable, LocalizedError {
     case invalidExpression
     case misc(String)
 
-    var errorDescription: String? {
+    var errorDescription: String {
         switch self {
         case .unsupportedColumnType:
             return "Unsupported column type"

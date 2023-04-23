@@ -39,7 +39,7 @@ class MemoryTests: XCTestCase {
             XCTFail("Something unexpected happened")
             return
         }
-        XCTAssertEqual(result, .failure("Table dresses already exists"))
+        XCTAssertEqual(result, .failure(.tableAlreadyExists("dresses")))
     }
 
     func testSuccessfulExecutionOfInsertStatement() throws {
@@ -85,7 +85,7 @@ class MemoryTests: XCTestCase {
             XCTFail("Something unexpected happened")
             return
         }
-        XCTAssertEqual(result, .failure("Table does_not_exist does not exist"))
+        XCTAssertEqual(result, .failure(.tableDoesNotExist("does_not_exist")))
     }
 
     func testInsertFailsForNotEnoughValues() throws {
@@ -102,7 +102,7 @@ class MemoryTests: XCTestCase {
             XCTFail("Something unexpected happened")
             return
         }
-        XCTAssertEqual(result, .failure("Not enough values"))
+        XCTAssertEqual(result, .failure(.notEnoughValues))
     }
 
     func testInsertFailsForTooManyValues() throws {
@@ -119,7 +119,7 @@ class MemoryTests: XCTestCase {
             XCTFail("Something unexpected happened")
             return
         }
-        XCTAssertEqual(result, .failure("Too many values"))
+        XCTAssertEqual(result, .failure(.tooManyValues))
     }
 
     func testSelectLiteralsStatement() throws {
@@ -241,7 +241,7 @@ class MemoryTests: XCTestCase {
             return
         }
 
-        XCTAssertEqual(result, .failure("Invalid expression"))
+        XCTAssertEqual(result, .failure(.invalidExpression))
     }
 
     func testSelectFailsForNonexistentTable() throws {
@@ -256,7 +256,7 @@ class MemoryTests: XCTestCase {
             return
         }
 
-        XCTAssertEqual(result, .failure("Table does_not_exist does not exist"))
+        XCTAssertEqual(result, .failure(.tableDoesNotExist("does_not_exist")))
     }
 
     func testSelectFailsForNonexistentColumn() throws {
@@ -271,7 +271,7 @@ class MemoryTests: XCTestCase {
             return
         }
 
-        XCTAssertEqual(result, .failure("Column does_not_exist does not exist"))
+        XCTAssertEqual(result, .failure(.columnDoesNotExist("does_not_exist")))
     }
 
     func testSelectFailsForWhereClauseReferencingNonexistentColumn() throws {
@@ -286,7 +286,7 @@ class MemoryTests: XCTestCase {
             return
         }
 
-        XCTAssertEqual(result, .failure("Column label does not exist"))
+        XCTAssertEqual(result, .failure(.columnDoesNotExist("label")))
     }
 
     func testSelectFailsForWhereClauseThatIsNotBooleanExpression() throws {
@@ -301,7 +301,7 @@ class MemoryTests: XCTestCase {
             return
         }
 
-        XCTAssertEqual(result, .failure("WHERE clause must be boolean expression"))
+        XCTAssertEqual(result, .failure(.whereClauseNotBooleanExpression))
     }
 
     func testSelectFailsForWhereClauseThatIsNotValidExpression() throws {
@@ -317,6 +317,6 @@ class MemoryTests: XCTestCase {
             return
         }
 
-        XCTAssertEqual(result, .failure("Invalid expression"))
+        XCTAssertEqual(result, .failure(.invalidExpression))
     }
 }
