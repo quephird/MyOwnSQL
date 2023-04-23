@@ -17,7 +17,7 @@ enum ColumnType {
     case boolean
 }
 
-struct Column {
+struct Column: Equatable {
     var name: String
     var type: ColumnType
 
@@ -27,7 +27,7 @@ struct Column {
     }
 }
 
-struct ResultSet {
+struct ResultSet: Equatable {
     var columns: [Column]
     var rows: [[MemoryCell]]
 
@@ -55,8 +55,64 @@ enum TypeCheckResult {
     case failure(StatementError)
 }
 
+enum StatementExecutionResult: Equatable {
+    case successfulCreateTable
+    case successfulInsert(Int)
+    case successfulSelect(ResultSet)
+    case failure(String)
+}
+
 class MemoryBackend {
     var tables: [String: Table] = [:]
+
+    func executeStatements(_ input: String) -> [StatementExecutionResult] {
+        var results: [StatementExecutionResult] = []
+
+        switch parse(input) {
+        case .failure(let errorMessage):
+            print(errorMessage)
+        case .success(let statements):
+            for statement in statements {
+                switch statement {
+                case .create(let createStatement):
+                    results.append(handleCreateTable(createStatement))
+                case .insert(let insertStatement):
+                    results.append(handleInsertTable(insertStatement))
+                case .select(let selectStatement):
+                    results.append(handleSelectTable(selectStatement))
+                }
+            }
+        }
+
+        return results
+    }
+
+    func handleCreateTable(_ statement: CreateStatement) -> StatementExecutionResult {
+        do {
+            try self.createTable(statement)
+            return .successfulCreateTable
+        } catch {
+            return .failure(error.localizedDescription)
+        }
+    }
+
+    func handleInsertTable(_ statement: InsertStatement) -> StatementExecutionResult {
+        do {
+            try self.insertTable(statement)
+            return .successfulInsert(1)
+        } catch {
+            return .failure(error.localizedDescription)
+        }
+    }
+
+    func handleSelectTable(_ statement: SelectStatement) -> StatementExecutionResult {
+        do {
+            let results = try self.selectTable(statement)
+            return .successfulSelect(results)
+        } catch {
+            return .failure(error.localizedDescription)
+        }
+    }
 
     func createTable(_ create: CreateStatement) throws {
         guard case .identifier(let tableName) = create.table.kind else {
