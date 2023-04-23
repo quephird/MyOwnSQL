@@ -57,8 +57,23 @@ struct InsertStatement: Equatable {
     }
 }
 
+struct DeleteStatement: Equatable {
+    var table: Token
+    var whereClause: Expression? = nil
+
+    init(_ table: Token) {
+        self.table = table
+    }
+
+    init(_ table: Token, _ whereClause: Expression) {
+        self.table = table
+        self.whereClause = whereClause
+    }
+}
+
 enum Statement: Equatable {
     case create(CreateStatement)
     case insert(InsertStatement)
     case select(SelectStatement)
+    case delete(DeleteStatement)
 }

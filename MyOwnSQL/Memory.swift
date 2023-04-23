@@ -80,6 +80,9 @@ class MemoryBackend {
                     results.append(insertTable(insertStatement))
                 case .select(let selectStatement):
                     results.append(selectTable(selectStatement))
+                case .delete:
+                    // TODO: Implement handler!!!
+                    continue
                 }
             }
         }
