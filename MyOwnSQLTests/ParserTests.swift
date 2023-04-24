@@ -474,13 +474,15 @@ class ParserTests: XCTestCase {
 create table foo (bar int);
 insert into foo values (42);
 select bar from foo;
+delete from foo where bar = 42;
+update foo set bar = bar + 1;
 """
 
         guard case .success(let statements) = parse(source) else {
             XCTFail("Parsing failed unexpectedly")
             return
         }
-        XCTAssertEqual(statements.count, 3)
+        XCTAssertEqual(statements.count, 5)
 
         guard case .create = statements[0] else {
             XCTFail("Expected CREATE statement")
@@ -491,6 +493,14 @@ select bar from foo;
             return
         }
         guard case .select = statements[2] else {
+            XCTFail("Expected SELECT statement")
+            return
+        }
+        guard case .delete = statements[3] else {
+            XCTFail("Expected SELECT statement")
+            return
+        }
+        guard case .update = statements[4] else {
             XCTFail("Expected SELECT statement")
             return
         }
