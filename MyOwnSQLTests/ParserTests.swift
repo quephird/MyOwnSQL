@@ -384,6 +384,24 @@ class ParserTests: XCTestCase {
          XCTAssertEqual(statement, expectedStatement)
     }
 
+    func testInvalidDeleteStatementsShouldFailToParse() throws {
+        for source in [
+            "DELETE foo", // Missing FROM keyword
+            "DELETE FROM WHERE bar = 1", // Missing table name
+            "DELETE FROM foo WHERE", // No expression following WHERE
+        ] {
+            guard case .success(let tokens) = lex(source) else {
+                XCTFail("Lexing failed unexpectedly")
+                return
+            }
+
+            guard case .failure = parseDeleteStatement(tokens, 0) else {
+                XCTFail("Parsing succeeded unexpectedly")
+                return
+            }
+        }
+    }
+
     func testSuccessfulParseOfUpdateStatement() throws {
         let source = "UPDATE foo SET bar = 1, baz = 2 WHERE quux = 3"
         guard case .success(let tokens) = lex(source) else {
@@ -415,6 +433,25 @@ class ParserTests: XCTestCase {
             )
         )
          XCTAssertEqual(statement, expectedStatement)
+    }
+
+    func testInvalidUpdateStatementsShouldFailToParse() throws {
+        for source in [
+            "UPDATE SET bar = bar + 1", // Missing table name
+            "UPDATE foo SET 1 = 1", // Column assignment missing column name
+            "UPDATE foo bar = bar + 1", // Missing SET keyword
+            "UPDATE foo SET bar = bar + 1 WHERE", // No expression following WHERE
+        ] {
+            guard case .success(let tokens) = lex(source) else {
+                XCTFail("Lexing failed unexpectedly")
+                return
+            }
+
+            guard case .failure = parseUpdateStatement(tokens, 0) else {
+                XCTFail("Parsing succeeded unexpectedly")
+                return
+            }
+        }
     }
 
     func testParseStatement() throws {
