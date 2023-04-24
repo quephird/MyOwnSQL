@@ -417,7 +417,7 @@ func parseInsertStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
     return .success(tokenCursorCopy, .insert(statement))
 }
 
-// For now, the structure of a supported DELETE statement is the following:
+// The structure of a supported DELETE statement is the following:
 //
 //     DELETE FROM <table name> <optional WHERE clause>
 func parseDeleteStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<Statement> {
@@ -459,6 +459,9 @@ func parseDeleteStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
     return .success(tokenCursorCopy, .delete(statement))
 }
 
+// Column assignments should have the following form:
+//
+//     <column name> = <expression>
 func parseColumnAssignments(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<[ColumnAssignment]> {
     var tokenCursorCopy = tokenCursor
     var columnAssignments: [ColumnAssignment] = []
@@ -494,7 +497,7 @@ func parseColumnAssignments(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelpe
     return .success(tokenCursorCopy, columnAssignments)
 }
 
-// For now, the structure of a supported UPDATE statement is the following:
+// The structure of a supported UPDATE statement is the following:
 //
 //     UPDATE <table name> SET <one or more column assignments separated by a comma> <optional WHERE clause>
 func parseUpdateStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<Statement> {
