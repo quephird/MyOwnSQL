@@ -339,7 +339,24 @@ class MemoryBackend {
             }
         }
 
-        // TODO: Need to typecheck expressions in column assignments
+        for columnAssignment in update.columnAssignments {
+            guard case .identifier(let columnName) = columnAssignment.column.kind else {
+                return .failure(.misc("Invalid token for column name"))
+            }
+            if let columnIndex = table.columnNames.firstIndex(of: columnName) {
+                switch typeCheck(columnAssignment.expression, table) {
+                case .failure(let error):
+                    return .failure(error)
+                case .success(let expressionType):
+                    let columnType = table.columnTypes[columnIndex]
+                    if expressionType != columnType {
+                        return .failure(.typeMismatch)
+                    }
+                }
+            } else {
+                return .failure(.columnDoesNotExist(columnName))
+            }
+        }
 
         var rowCount = 0
         for rowId in table.data.keys {
