@@ -31,6 +31,8 @@ while true {
             printResultSet(resultSet)
         case .successfulDelete(let rowCount):
             print("\(rowCount) row(s) deleted")
+        case .successfulUpdate(let rowCount):
+            print("\(rowCount) row(s) updated")
         }
     }
 }

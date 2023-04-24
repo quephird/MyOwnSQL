@@ -13,6 +13,7 @@ enum StatementError: Error, Equatable, LocalizedError {
     case tableDoesNotExist(String)
     case columnDoesNotExist(String)
     case whereClauseNotBooleanExpression
+    case typeMismatch
     case notEnoughValues
     case tooManyValues
     case invalidExpression
@@ -30,6 +31,8 @@ enum StatementError: Error, Equatable, LocalizedError {
             return "Column \(columnName) does not exist"
         case .whereClauseNotBooleanExpression:
             return "WHERE clause must be boolean expression"
+        case .typeMismatch:
+            return "Type mismatch in SET clause"
         case .notEnoughValues:
             return "Not enough values"
         case .tooManyValues:

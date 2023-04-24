@@ -61,6 +61,7 @@ enum StatementExecutionResult: Equatable {
     case successfulInsert(Int)
     case successfulSelect(ResultSet)
     case successfulDelete(Int)
+    case successfulUpdate(Int)
     case failure(StatementError)
 }
 
@@ -84,6 +85,8 @@ class MemoryBackend {
                     results.append(selectTable(selectStatement))
                 case .delete(let deleteStatement):
                     results.append(deleteTable(deleteStatement))
+                case .update(let updateStatement):
+                    results.append(updateTable(updateStatement))
                 }
             }
         }
@@ -315,6 +318,70 @@ class MemoryBackend {
         }
 
         return .successfulDelete(rowids.count)
+    }
+
+    func updateTable(_ update: UpdateStatement) -> StatementExecutionResult {
+        guard case .identifier(let tableName) = update.table.kind else {
+            return .failure(.misc("Invalid token for table name"))
+        }
+        guard let table = self.tables[tableName] else {
+            return .failure(.tableDoesNotExist(tableName))
+        }
+
+        if let whereClause = update.whereClause {
+            switch typeCheck(whereClause, table) {
+            case .failure(let error):
+                return .failure(error)
+            case .success(let type):
+                if type != .boolean {
+                    return .failure(.whereClauseNotBooleanExpression)
+                }
+            }
+        }
+
+        for columnAssignment in update.columnAssignments {
+            guard case .identifier(let columnName) = columnAssignment.column.kind else {
+                return .failure(.misc("Invalid token for column name"))
+            }
+            if let columnIndex = table.columnNames.firstIndex(of: columnName) {
+                switch typeCheck(columnAssignment.expression, table) {
+                case .failure(let error):
+                    return .failure(error)
+                case .success(let expressionType):
+                    let columnType = table.columnTypes[columnIndex]
+                    if expressionType != columnType {
+                        return .failure(.typeMismatch)
+                    }
+                }
+            } else {
+                return .failure(.columnDoesNotExist(columnName))
+            }
+        }
+
+        var rowCount = 0
+        for rowId in table.data.keys {
+            var tableRow = table.data[rowId]!
+            if let whereClause = update.whereClause {
+                if case .booleanValue(let updateRow) = evaluateExpression(whereClause, table, tableRow), !updateRow {
+                    continue
+                }
+            }
+
+            for columnAssignment in update.columnAssignments {
+                for (i, columnName) in table.columnNames.enumerated() {
+                    if case .identifier(let requestedColumnName) = columnAssignment.column.kind, columnName == requestedColumnName {
+                        guard let value = evaluateExpression(columnAssignment.expression, table, tableRow) else {
+                            return .failure(.invalidExpression)
+                        }
+                        tableRow[i] = value
+                    }
+                }
+            }
+            table.data[rowId] = tableRow
+            rowCount += 1
+        }
+
+        return .successfulUpdate(rowCount)
     }
 
     func typeCheck(_ expression: Expression, _ table: Table) -> TypeCheckResult {

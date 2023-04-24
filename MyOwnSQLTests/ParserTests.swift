@@ -384,6 +384,76 @@ class ParserTests: XCTestCase {
          XCTAssertEqual(statement, expectedStatement)
     }
 
+    func testInvalidDeleteStatementsShouldFailToParse() throws {
+        for source in [
+            "DELETE foo", // Missing FROM keyword
+            "DELETE FROM WHERE bar = 1", // Missing table name
+            "DELETE FROM foo WHERE", // No expression following WHERE
+        ] {
+            guard case .success(let tokens) = lex(source) else {
+                XCTFail("Lexing failed unexpectedly")
+                return
+            }
+
+            guard case .failure = parseDeleteStatement(tokens, 0) else {
+                XCTFail("Parsing succeeded unexpectedly")
+                return
+            }
+        }
+    }
+
+    func testSuccessfulParseOfUpdateStatement() throws {
+        let source = "UPDATE foo SET bar = 1, baz = 2 WHERE quux = 3"
+        guard case .success(let tokens) = lex(source) else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
+
+        guard case .success(_, .update(let statement)) = parseUpdateStatement(tokens, 0) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+
+        let expectedStatement = UpdateStatement(
+            Token(kind: .identifier("foo"), location: Location(line: 0, column: 7)),
+            [
+                ColumnAssignment(
+                    Token(kind: .identifier("bar"), location: Location(line: 0, column: 15)),
+                    .term(Token(kind: .numeric("1"), location: Location(line: 0, column: 21)))
+                ),
+                ColumnAssignment(
+                    Token(kind: .identifier("baz"), location: Location(line: 0, column: 24)),
+                    .term(Token(kind: .numeric("2"), location: Location(line: 0, column: 30)))
+                ),
+            ],
+            .binary(
+                .term(Token(kind: .identifier("quux"), location: Location(line: 0, column: 38))),
+                .term(Token(kind: .numeric("3"), location: Location(line: 0, column: 45))),
+                Token(kind: .symbol(.equals), location: Location(line: 0, column: 43))
+            )
+        )
+         XCTAssertEqual(statement, expectedStatement)
+    }
+
+    func testInvalidUpdateStatementsShouldFailToParse() throws {
+        for source in [
+            "UPDATE SET bar = bar + 1", // Missing table name
+            "UPDATE foo SET 1 = 1", // Column assignment missing column name
+            "UPDATE foo bar = bar + 1", // Missing SET keyword
+            "UPDATE foo SET bar = bar + 1 WHERE", // No expression following WHERE
+        ] {
+            guard case .success(let tokens) = lex(source) else {
+                XCTFail("Lexing failed unexpectedly")
+                return
+            }
+
+            guard case .failure = parseUpdateStatement(tokens, 0) else {
+                XCTFail("Parsing succeeded unexpectedly")
+                return
+            }
+        }
+    }
+
     func testParseStatement() throws {
         let source = "SELECT 42, 'x', true, foo FROM bar;"
         guard case .success(let tokens) = lex(source) else {
@@ -404,13 +474,15 @@ class ParserTests: XCTestCase {
 create table foo (bar int);
 insert into foo values (42);
 select bar from foo;
+delete from foo where bar = 42;
+update foo set bar = bar + 1;
 """
 
         guard case .success(let statements) = parse(source) else {
             XCTFail("Parsing failed unexpectedly")
             return
         }
-        XCTAssertEqual(statements.count, 3)
+        XCTAssertEqual(statements.count, 5)
 
         guard case .create = statements[0] else {
             XCTFail("Expected CREATE statement")
@@ -421,6 +493,14 @@ select bar from foo;
             return
         }
         guard case .select = statements[2] else {
+            XCTFail("Expected SELECT statement")
+            return
+        }
+        guard case .delete = statements[3] else {
+            XCTFail("Expected SELECT statement")
+            return
+        }
+        guard case .update = statements[4] else {
             XCTFail("Expected SELECT statement")
             return
         }

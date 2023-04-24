@@ -15,6 +15,8 @@ enum Keyword: String, CaseIterable {
     case insert = "insert"
     case select = "select"
     case delete = "delete"
+    case update = "update"
+    case set = "set"
     case values = "values"
     case table = "table"
     case `where` = "where"
