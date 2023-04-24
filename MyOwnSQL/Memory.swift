@@ -84,6 +84,10 @@ class MemoryBackend {
                     results.append(selectTable(selectStatement))
                 case .delete(let deleteStatement):
                     results.append(deleteTable(deleteStatement))
+                case .update(let updateStatement):
+                    // TODO: Implement later
+                    continue
+//                    results.append(updateTable(updateStatement))
                 }
             }
         }

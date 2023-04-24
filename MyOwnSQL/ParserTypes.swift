@@ -71,9 +71,37 @@ struct DeleteStatement: Equatable {
     }
 }
 
-enum Statement: Equatable {
+struct ColumnAssignment: Equatable {
+    var column: Token
+    var expression: Expression
+
+    init(_ column: Token, _ expression: Expression) {
+        self.column = column
+        self.expression = expression
+    }
+}
+
+struct UpdateStatement: Equatable {
+    var table: Token
+    var whereClause: Expression? = nil
+    var columnAssignments: [ColumnAssignment]
+
+    init(_ table: Token, _ columnAssignments: [ColumnAssignment]) {
+        self.table = table
+        self.columnAssignments = columnAssignments
+    }
+
+    init(_ table: Token, _ columnAssignments: [ColumnAssignment], _ whereClause: Expression) {
+        self.table = table
+        self.columnAssignments = columnAssignments
+        self.whereClause = whereClause
+    }
+}
+
+enum Statement {
     case create(CreateStatement)
     case insert(InsertStatement)
     case select(SelectStatement)
     case delete(DeleteStatement)
+    case update(UpdateStatement)
 }

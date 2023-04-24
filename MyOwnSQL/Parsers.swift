@@ -459,6 +459,93 @@ func parseDeleteStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
     return .success(tokenCursorCopy, .delete(statement))
 }
 
+func parseColumnAssignments(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<[ColumnAssignment]> {
+    var tokenCursorCopy = tokenCursor
+    var columnAssignments: [ColumnAssignment] = []
+
+    while tokenCursorCopy < tokens.count {
+        guard tokenCursorCopy < tokens.count, case .identifier = tokens[tokenCursorCopy].kind else {
+            return .failure("Missing column name")
+        }
+        let columnName = tokens[tokenCursorCopy]
+        tokenCursorCopy += 1
+
+        if tokenCursorCopy >= tokens.count || tokens[tokenCursorCopy].kind != TokenKind.symbol(.equals) {
+            return .failure("Missing assignment operator")
+        }
+        tokenCursorCopy += 1
+
+        let delimiters: [TokenKind] = [.symbol(.comma), .symbol(.rightParenthesis), .keyword(.where)]
+        guard case .success(let newTokenCursorCopy, let expression) = parseExpression(tokens, tokenCursorCopy, delimiters, 0) else {
+            return .failure("Expression expected but not found")
+        }
+        columnAssignments.append(ColumnAssignment(columnName, expression))
+        tokenCursorCopy = newTokenCursorCopy
+
+        guard tokenCursorCopy < tokens.count, case .symbol(.comma) = tokens[tokenCursorCopy].kind else {
+            break
+        }
+        tokenCursorCopy += 1
+    }
+
+    if columnAssignments.isEmpty {
+        return .failure("At least one column assignment was expected")
+    }
+    return .success(tokenCursorCopy, columnAssignments)
+}
+
+// For now, the structure of a supported UPDATE statement is the following:
+//
+//     UPDATE <table name> SET <one or more column assignments separated by a comma> <optional WHERE clause>
+func parseUpdateStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<Statement> {
+    var tokenCursorCopy = tokenCursor
+    var whereClause: Expression?
+
+    if tokens[tokenCursorCopy].kind != TokenKind.keyword(.update) {
+        return .noMatch
+    }
+    tokenCursorCopy += 1
+
+    guard tokenCursorCopy < tokens.count, case .identifier = tokens[tokenCursorCopy].kind else {
+        return .failure("Missing table name")
+    }
+    let table = tokens[tokenCursorCopy]
+    tokenCursorCopy += 1
+
+    if tokenCursorCopy >= tokens.count || tokens[tokenCursorCopy].kind != TokenKind.keyword(.set) {
+        return .failure("Missing SET keyword")
+    }
+    tokenCursorCopy += 1
+
+    var columnAssignments: [ColumnAssignment]
+    switch parseColumnAssignments(tokens, tokenCursorCopy) {
+    case .failure(let errorMessage):
+        return .failure(errorMessage)
+    case .success(let newTokenCursor, let newColumnAssignments):
+        tokenCursorCopy = newTokenCursor
+        columnAssignments = newColumnAssignments
+    default:
+        return .failure("Unexpected error occurred")
+    }
+    var statement = UpdateStatement(table, columnAssignments)
+
+    switch parseToken(tokens, tokenCursorCopy, .keyword(.where)) {
+    case .success(let newTokenCursor, _):
+        switch parseExpression(tokens, newTokenCursor, [.symbol(.semicolon)], 0) {
+        case .success(let newTokenCursor, let expression):
+            tokenCursorCopy = newTokenCursor
+            whereClause = expression
+        default:
+            return .failure("Could not parse expression for WHERE clause")
+        }
+    default:
+        whereClause = nil
+    }
+    statement.whereClause = whereClause
+
+    return .success(tokenCursorCopy, .update(statement))
+}
+
 func parseStatement(_ tokens: [Token], _ cursor: Int) -> ParseHelperResult<Statement> {
     let parseHelpers = [
         parseCreateStatement,

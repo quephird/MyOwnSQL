@@ -384,6 +384,39 @@ class ParserTests: XCTestCase {
          XCTAssertEqual(statement, expectedStatement)
     }
 
+    func testSuccessfulParseOfUpdateStatement() throws {
+        let source = "UPDATE foo SET bar = 1, baz = 2 WHERE quux = 3"
+        guard case .success(let tokens) = lex(source) else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
+
+        guard case .success(_, .update(let statement)) = parseUpdateStatement(tokens, 0) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+
+        let expectedStatement = UpdateStatement(
+            Token(kind: .identifier("foo"), location: Location(line: 0, column: 7)),
+            [
+                ColumnAssignment(
+                    Token(kind: .identifier("bar"), location: Location(line: 0, column: 15)),
+                    .term(Token(kind: .numeric("1"), location: Location(line: 0, column: 21)))
+                ),
+                ColumnAssignment(
+                    Token(kind: .identifier("baz"), location: Location(line: 0, column: 24)),
+                    .term(Token(kind: .numeric("2"), location: Location(line: 0, column: 30)))
+                ),
+            ],
+            .binary(
+                .term(Token(kind: .identifier("quux"), location: Location(line: 0, column: 38))),
+                .term(Token(kind: .numeric("3"), location: Location(line: 0, column: 45))),
+                Token(kind: .symbol(.equals), location: Location(line: 0, column: 43))
+            )
+        )
+         XCTAssertEqual(statement, expectedStatement)
+    }
+
     func testParseStatement() throws {
         let source = "SELECT 42, 'x', true, foo FROM bar;"
         guard case .success(let tokens) = lex(source) else {
