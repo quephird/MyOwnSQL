@@ -417,11 +417,54 @@ func parseInsertStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
     return .success(tokenCursorCopy, .insert(statement))
 }
 
+// For now, the structure of a supported DELETE statement is the following:
+//
+//     DELETE FROM <table name> <optional WHERE clause>
+func parseDeleteStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<Statement> {
+    var tokenCursorCopy = tokenCursor
+    var whereClause: Expression?
+
+    if tokens[tokenCursorCopy].kind != TokenKind.keyword(.delete) {
+        return .noMatch
+    }
+    tokenCursorCopy += 1
+
+    if tokenCursorCopy >= tokens.count || tokens[tokenCursorCopy].kind != TokenKind.keyword(.from) {
+        return .failure("Missing FROM keyword")
+    }
+    tokenCursorCopy += 1
+
+    guard tokenCursorCopy < tokens.count, case .identifier = tokens[tokenCursorCopy].kind else {
+        return .failure("Missing table name")
+    }
+    let table = tokens[tokenCursorCopy]
+    tokenCursorCopy += 1
+
+    var statement = DeleteStatement(table)
+
+    switch parseToken(tokens, tokenCursorCopy, .keyword(.where)) {
+    case .success(let newTokenCursor, _):
+        switch parseExpression(tokens, newTokenCursor, [.symbol(.semicolon)], 0) {
+        case .success(let newTokenCursor, let expression):
+            tokenCursorCopy = newTokenCursor
+            whereClause = expression
+        default:
+            return .failure("Could not parse expression for WHERE clause")
+        }
+    default:
+        whereClause = nil
+    }
+    statement.whereClause = whereClause
+
+    return .success(tokenCursorCopy, .delete(statement))
+}
+
 func parseStatement(_ tokens: [Token], _ cursor: Int) -> ParseHelperResult<Statement> {
     let parseHelpers = [
         parseCreateStatement,
         parseInsertStatement,
         parseSelectStatement,
+        parseDeleteStatement,
     ]
     for helper in parseHelpers {
         switch helper(tokens, cursor) {

@@ -5,6 +5,8 @@
 //  Created by Danielle Kefford on 2/7/23.
 //
 
+import Foundation
+
 enum MemoryCell: Equatable {
     case intValue(Int)
     case textValue(String)
@@ -38,15 +40,14 @@ struct ResultSet: Equatable {
 }
 
 class Table {
-    // TODO: Look into OrderedDictionary in swift-collections library
     var columnNames: [String]
     var columnTypes: [ColumnType]
-    var data: [[MemoryCell]]
+    var data: [String : [MemoryCell]]
 
     init(_ columnNames: [String], _ columnTypes: [ColumnType]) {
         self.columnNames = columnNames
         self.columnTypes = columnTypes
-        self.data = []
+        self.data = [:]
     }
 }
 
@@ -59,6 +60,7 @@ enum StatementExecutionResult: Equatable {
     case successfulCreateTable
     case successfulInsert(Int)
     case successfulSelect(ResultSet)
+    case successfulDelete(Int)
     case failure(StatementError)
 }
 
@@ -80,6 +82,8 @@ class MemoryBackend {
                     results.append(insertTable(insertStatement))
                 case .select(let selectStatement):
                     results.append(selectTable(selectStatement))
+                case .delete(let deleteStatement):
+                    results.append(deleteTable(deleteStatement))
                 }
             }
         }
@@ -151,7 +155,8 @@ class MemoryBackend {
                     }
                 }
 
-                table.data.append(newRow)
+                let newRowid = UUID().uuidString
+                table.data[newRowid] = newRow
                 return .successfulInsert(1)
             } else {
                 return .failure(.tableDoesNotExist(tableName))
@@ -199,7 +204,7 @@ class MemoryBackend {
         }
 
         var isFirstRow = true
-        for tableRow in table.data {
+        for tableRow in table.data.values {
             var resultRow: [MemoryCell] = []
 
             if let whereClause = select.whereClause {
@@ -272,6 +277,44 @@ class MemoryBackend {
             resultRows.append(resultRow)
         }
         return .successfulSelect(ResultSet(columns, resultRows))
+    }
+
+    func deleteTable(_ delete: DeleteStatement) -> StatementExecutionResult {
+        guard case .identifier(let tableName) = delete.table.kind else {
+            return .failure(.misc("Invalid token for table name"))
+        }
+        guard let table = self.tables[tableName] else {
+            return .failure(.tableDoesNotExist(tableName))
+        }
+
+        if let whereClause = delete.whereClause {
+            switch typeCheck(whereClause, table) {
+            case .failure(let error):
+                return .failure(error)
+            case .success(let type):
+                if type != .boolean {
+                    return .failure(.whereClauseNotBooleanExpression)
+                }
+            }
+        }
+
+        var rowids: [String] = []
+        for (rowid, tableRow) in table.data {
+            if let whereClause = delete.whereClause {
+                if case .booleanValue(let deleteRow) = evaluateExpression(whereClause, table, tableRow), deleteRow {
+                    rowids.append(rowid)
+                }
+                continue
+            }
+
+            rowids.append(rowid)
+        }
+
+        for rowid in rowids {
+            table.data[rowid] = nil
+        }
+
+        return .successfulDelete(rowids.count)
     }
 
     func typeCheck(_ expression: Expression, _ table: Table) -> TypeCheckResult {

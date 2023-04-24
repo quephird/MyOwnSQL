@@ -345,6 +345,45 @@ class ParserTests: XCTestCase {
         }
     }
 
+    func testSuccessfulParseOfSimpleDeleteStatement() throws {
+        let source = "DELETE FROM foo"
+        guard case .success(let tokens) = lex(source) else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
+
+        guard case .success(_, .delete(let statement)) = parseDeleteStatement(tokens, 0) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+        let expectedStatement = DeleteStatement(
+            Token(kind: .identifier("foo"), location: Location(line: 0, column: 12))
+        )
+         XCTAssertEqual(statement, expectedStatement)
+    }
+
+    func testSuccessfulParseOfDeleteStatementWithWhereClause() throws {
+        let source = "DELETE FROM foo WHERE bar = 1"
+        guard case .success(let tokens) = lex(source) else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
+
+        guard case .success(_, .delete(let statement)) = parseDeleteStatement(tokens, 0) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+        let expectedStatement = DeleteStatement(
+            Token(kind: .identifier("foo"), location: Location(line: 0, column: 12)),
+            .binary(
+                .term(Token(kind: .identifier("bar"), location: Location(line: 0, column: 22))),
+                .term(Token(kind: .numeric("1"), location: Location(line: 0, column: 28))),
+                Token(kind: .symbol(.equals), location: Location(line: 0, column: 26))
+            )
+        )
+         XCTAssertEqual(statement, expectedStatement)
+    }
+
     func testParseStatement() throws {
         let source = "SELECT 42, 'x', true, foo FROM bar;"
         guard case .success(let tokens) = lex(source) else {

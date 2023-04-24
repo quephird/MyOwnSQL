@@ -25,12 +25,12 @@ while true {
             print(error.errorDescription)
         case .successfulCreateTable:
             print("Table created")
-        case .successfulInsert(let rows):
-            // TODO: One of these days, I need to be able to support
-            //       inserting more than one row at a time
-            print("\(rows) row(s) inserted")
+        case .successfulInsert(let rowCount):
+            print("\(rowCount) row(s) inserted")
         case .successfulSelect(let resultSet):
             printResultSet(resultSet)
+        case .successfulDelete(let rowCount):
+            print("\(rowCount) row(s) deleted")
         }
     }
 }
