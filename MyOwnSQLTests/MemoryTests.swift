@@ -405,4 +405,90 @@ class MemoryTests: XCTestCase {
         ]
         XCTAssertEqual(expectedRow, onlyRow)
     }
+
+    func testUpdateAllRows() throws {
+        let database = MemoryBackend()
+        let create = "CREATE TABLE clothes (id int, description text, is_fabulous boolean);"
+        let _ = database.executeStatements(create)
+        let insert1 = "INSERT INTO clothes VALUES (1, 'Long black velvet gown from Lauren', false);"
+        let _ = database.executeStatements(insert1)
+        let insert2 = "INSERT INTO clothes VALUES (2, 'Catsuit from Black Milk', false);"
+        let _ = database.executeStatements(insert2)
+
+        let update = "UPDATE clothes SET is_fabulous = true;"
+        let updateResults = database.executeStatements(update)
+        guard let updateResult = updateResults.first else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+
+        guard case .successfulUpdate(let rowCount) = updateResult else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+
+        XCTAssertEqual(rowCount, 2)
+
+        // Let's make sure we updated both rows
+        let select = "SELECT is_fabulous FROM clothes;"
+        let selectResults = database.executeStatements(select)
+        guard let selectResult = selectResults.first else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+
+        guard case .successfulSelect(let resultSet) = selectResult else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+        for row in resultSet.rows {
+            XCTAssertEqual(row[0], .booleanValue(true))
+        }
+    }
+
+    func testUpdateOnlyCertainRows() throws {
+        let database = MemoryBackend()
+        let create = "CREATE TABLE some_table (id int, was_updated boolean);"
+        let _ = database.executeStatements(create)
+        let insert1 = "INSERT INTO some_table VALUES (1, false);"
+        let _ = database.executeStatements(insert1)
+        let insert2 = "INSERT INTO some_table VALUES (2, false);"
+        let _ = database.executeStatements(insert2)
+        let insert3 = "INSERT INTO some_table VALUES (3, false);"
+        let _ = database.executeStatements(insert3)
+
+        let update = "UPDATE some_table SET was_updated = true WHERE id = 2;"
+        let updateResults = database.executeStatements(update)
+        guard let updateResult = updateResults.first else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+
+        guard case .successfulUpdate(let rowCount) = updateResult else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+
+        XCTAssertEqual(rowCount, 1)
+
+        // Let's make sure we updated only one of the rows
+        let select = "SELECT id, was_updated FROM some_table;"
+        let selectResults = database.executeStatements(select)
+        guard let selectResult = selectResults.first else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+
+        guard case .successfulSelect(let resultSet) = selectResult else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+        for row in resultSet.rows {
+            if row[0] == .intValue(2) {
+                XCTAssertEqual(row[1], .booleanValue(true))
+            } else {
+                XCTAssertEqual(row[1], .booleanValue(false))
+            }
+        }
+    }
 }

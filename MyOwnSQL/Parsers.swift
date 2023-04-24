@@ -475,7 +475,7 @@ func parseColumnAssignments(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelpe
         }
         tokenCursorCopy += 1
 
-        let delimiters: [TokenKind] = [.symbol(.comma), .symbol(.rightParenthesis), .keyword(.where)]
+        let delimiters: [TokenKind] = [.symbol(.comma), .symbol(.semicolon), .keyword(.where)]
         guard case .success(let newTokenCursorCopy, let expression) = parseExpression(tokens, tokenCursorCopy, delimiters, 0) else {
             return .failure("Expression expected but not found")
         }
@@ -552,6 +552,7 @@ func parseStatement(_ tokens: [Token], _ cursor: Int) -> ParseHelperResult<State
         parseInsertStatement,
         parseSelectStatement,
         parseDeleteStatement,
+        parseUpdateStatement,
     ]
     for helper in parseHelpers {
         switch helper(tokens, cursor) {
