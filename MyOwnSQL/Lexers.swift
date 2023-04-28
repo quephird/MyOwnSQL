@@ -165,22 +165,38 @@ func lexSymbol(_ source: String, _ cursor: Cursor) -> LexHelperResult {
 
 func lexKeyword(_ source: String, _ cursor: Cursor) -> LexHelperResult {
     var cursorCopy = cursor
+    var maybeKeyword = ""
 
-    // TODO: Is this the best way to support case insensitivity?
-    if let match = Keyword.longestMatch(source.lowercased(), cursor) {
-        source.formIndex(&cursorCopy.pointer, offsetBy: match.rawValue.count)
-        cursorCopy.location.column += match.rawValue.count
-
-        var newToken = Token(kind: .keyword(match), location: cursor.location)
-        // TODO: Is this the best way to check for booleans?
-        if [Keyword.true, Keyword.false].contains(match) {
-            newToken.kind = .boolean(match.rawValue)
+    // Keywords _must_ be delimited by either whitespace or other punctuation characters
+OUTER:
+    for char in source[cursor.pointer..<source.endIndex] {
+        switch char {
+        case "\n", "\t", " ", "(", ")", ";", ",":
+            break OUTER
+        default:
+            maybeKeyword.append(char)
         }
+    }
 
-        return .success(cursorCopy, newToken)
-    } else {
+    if maybeKeyword == "" {
         return .failure
     }
+
+    for keyword in Keyword.allCases {
+        if keyword.rawValue == maybeKeyword.lowercased() {
+            source.formIndex(&cursorCopy.pointer, offsetBy: maybeKeyword.count)
+
+            var newToken = Token(kind: .keyword(keyword), location: cursor.location)
+            if [Keyword.true, Keyword.false].contains(keyword) {
+                newToken.kind = .boolean(maybeKeyword)
+            }
+
+            cursorCopy.location.column += maybeKeyword.count
+            return .success(cursorCopy, newToken)
+        }
+    }
+
+    return .failure
 }
 
 func lexIdentifier(_ source: String, _ cursor: Cursor) -> LexHelperResult {
