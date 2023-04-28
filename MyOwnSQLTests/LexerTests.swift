@@ -245,4 +245,25 @@ WHERE bar = 42;
         let expectedErrorMessage = "Unable to lex token after select, at line 0, column 7"
         XCTAssertEqual(actualErrorMessage, expectedErrorMessage)
     }
+
+    func testLexingStatmentWithIdentifiersPrefixedWithKeywords() throws {
+        let source = "CREATE TABLE insert_table(int_column INT);"
+        let result = lex(source)
+        guard case .success(let actualTokens) = result else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
+
+        let expectedTokens = [
+            Token(kind: .keyword(.create), location: Location(line: 0, column: 0)),
+            Token(kind: .keyword(.table), location: Location(line: 0, column: 7)),
+            Token(kind: .identifier("insert_table"), location: Location(line: 0, column: 13)),
+            Token(kind: .symbol(.leftParenthesis), location: Location(line: 0, column: 25)),
+            Token(kind: .identifier("int_column"), location: Location(line: 0, column: 26)),
+            Token(kind: .keyword(.int), location: Location(line: 0, column: 37)),
+            Token(kind: .symbol(.rightParenthesis), location: Location(line: 0, column: 40)),
+            Token(kind: .symbol(.semicolon), location: Location(line: 0, column: 41)),
+        ]
+        XCTAssertEqual(actualTokens, expectedTokens)
+    }
 }
