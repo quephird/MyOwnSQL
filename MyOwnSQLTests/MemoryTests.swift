@@ -42,6 +42,20 @@ class MemoryTests: XCTestCase {
         XCTAssertEqual(result, .failure(.tableAlreadyExists("dresses")))
     }
 
+    func testCreateStatementWithNullalityQualifiers() throws {
+        let database = MemoryBackend()
+        let firstInput = "CREATE TABLE foo(bar int not null, baz text null, quux boolean);"
+        let _ = database.executeStatements(firstInput)
+
+        guard let newTable = database.tables["foo"] else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+        let expectedNullalities = [false, true, true]
+        let actualNullalities = newTable.columnNullalities
+        XCTAssertEqual(actualNullalities, expectedNullalities)
+    }
+
     func testSuccessfulExecutionOfInsertStatement() throws {
         // Create the table first...
         let database = MemoryBackend()
@@ -120,6 +134,21 @@ class MemoryTests: XCTestCase {
             return
         }
         XCTAssertEqual(result, .failure(.tooManyValues))
+    }
+
+    func testInsertFailsWhenInsertingNullValueIntoNotNullColumn() throws {
+        let database = MemoryBackend()
+        let create = "CREATE TABLE dresses(id int NOT NULL, description TEXT);"
+        let _ = database.executeStatements(create)
+
+        let badInsert = "INSERT INTO dresses VALUES (null, 'Velvet dress');"
+        let results = database.executeStatements(badInsert)
+
+        guard let result = results.first else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+        XCTAssertEqual(result, .failure(.cannotInsertNull("id")))
     }
 
     func testSelectLiteralsStatement() throws {
@@ -223,6 +252,35 @@ class MemoryTests: XCTestCase {
         let expectedRow: [MemoryCell] = [
             .intValue(1),
             .textValue("Long black velvet gown from Lauren"),
+        ]
+        let actualRow = resultSet.rows[0]
+        XCTAssertEqual(actualRow, expectedRow)
+    }
+
+    func testSelectFromTableWithNullValues() throws {
+        let database = MemoryBackend()
+        let create = "CREATE TABLE clothes (id INT NOT NULL, description TEXT NOT NULL, comment TEXT NULL);"
+        let _ = database.executeStatements(create)
+        let insert = "INSERT INTO clothes VALUES (1, 'Long black velvet gown from Lauren', NULL);"
+        let _ = database.executeStatements(insert)
+
+        let select = "SELECT id, description, comment FROM clothes;"
+        let results = database.executeStatements(select)
+        guard let result = results.first else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+
+        guard case .successfulSelect(let resultSet) = result else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+
+        XCTAssertEqual(resultSet.rows.count, 1)
+        let expectedRow: [MemoryCell] = [
+            .intValue(1),
+            .textValue("Long black velvet gown from Lauren"),
+            .null
         ]
         let actualRow = resultSet.rows[0]
         XCTAssertEqual(actualRow, expectedRow)
