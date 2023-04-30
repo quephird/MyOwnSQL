@@ -286,6 +286,42 @@ class MemoryTests: XCTestCase {
         XCTAssertEqual(actualRow, expectedRow)
     }
 
+    func testSelectingExpressionsInvolvingNullsInVariousWays() throws {
+        let database = MemoryBackend()
+        let create = "CREATE TABLE foo(id INT);"
+        let _ = database.executeStatements(create)
+        let insert = "INSERT INTO foo VALUES (1);"
+        let _ = database.executeStatements(insert)
+
+        for (select, expectedValue): (String, MemoryCell) in [
+            ("SELECT 1 + NULL FROM foo;", .null),
+            ("SELECT 1 * NULL FROM foo;", .null),
+            ("SELECT 'null' || NULL FROM foo;", .null),
+            ("SELECT 1 = NULL FROM foo;", .booleanValue(false)),
+            ("SELECT 1 != NULL FROM foo;", .booleanValue(false)),
+            ("SELECT TRUE AND NULL FROM foo;", .booleanValue(false)),
+            ("SELECT TRUE OR NULL FROM foo;", .booleanValue(true)),
+        ] {
+            let results = database.executeStatements(select)
+            guard let result = results.first else {
+                XCTFail("Something unexpected happened")
+                return
+            }
+
+            guard case .successfulSelect(let resultSet) = result else {
+                XCTFail("Something unexpected happened")
+                return
+            }
+
+            XCTAssertEqual(resultSet.rows.count, 1)
+            let expectedRow: [MemoryCell] = [
+                expectedValue
+            ]
+            let actualRow = resultSet.rows[0]
+            XCTAssertEqual(actualRow, expectedRow)
+        }
+    }
+
     func testSelectFailsForBadExpressionInSelectClause() throws {
         let database = MemoryBackend()
         let create = "CREATE TABLE dresses (id int, description text, is_in_season boolean);"

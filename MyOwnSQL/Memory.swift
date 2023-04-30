@@ -18,6 +18,7 @@ enum ColumnType {
     case int
     case text
     case boolean
+    case null
 }
 
 struct Column: Equatable {
@@ -410,6 +411,8 @@ class MemoryBackend {
                 return .success(.int)
             case .string:
                 return .success(.text)
+            case .keyword(.null):
+                return .success(.null)
             case .identifier(let requestedColumnName):
                 for (i, columnName) in table.columnNames.enumerated() {
                     if requestedColumnName == columnName {
@@ -439,27 +442,32 @@ class MemoryBackend {
 
             switch operatorToken.kind {
             case .keyword(.and), .keyword(.or):
-                if leftType == .boolean && rightType == .boolean {
+                switch (leftType, rightType) {
+                case (.boolean, .boolean), (.null, .boolean), (.boolean, .null):
                     return .success(.boolean)
-                } else {
+                default:
                     return .failure(StatementError.invalidExpression)
                 }
             case .symbol(.equals), .symbol(.notEquals):
                 if leftType == rightType {
                     return .success(.boolean)
+                } else if leftType == .null || rightType == .null {
+                    return .success(.boolean)
                 } else {
                     return .failure(StatementError.invalidExpression)
                 }
             case .symbol(.plus), .symbol(.asterisk):
-                if leftType == .int && rightType == .int {
+                switch (leftType, rightType) {
+                case (.int, .int), (.null, .int), (.int, .null):
                     return .success(.int)
-                } else {
+                default:
                     return .failure(StatementError.invalidExpression)
                 }
             case .symbol(.concatenate):
-                if leftType == .text && rightType == .text {
+                switch (leftType, rightType) {
+                case (.text, .text), (.null, .text), (.text, .null):
                     return .success(.text)
-                } else {
+                default:
                     return .failure(StatementError.invalidExpression)
                 }
             default:
@@ -486,7 +494,7 @@ func evaluateExpression(_ expr: Expression, _ table: Table, _ tableRow: [MemoryC
                 return nil
             }
         case .boolean(let value):
-            switch value {
+            switch value.lowercased() {
             case "true":
                 return .booleanValue(true)
             default:
@@ -518,6 +526,8 @@ func evaluateExpression(_ expr: Expression, _ table: Table, _ tableRow: [MemoryC
             switch (leftValue, rightValue) {
             case (.booleanValue(let leftBool), .booleanValue(let rightBool)):
                 return .booleanValue(leftBool && rightBool)
+            case (.null, _), (_, .null):
+                return .booleanValue(false)
             default:
                 return nil
             }
@@ -525,6 +535,10 @@ func evaluateExpression(_ expr: Expression, _ table: Table, _ tableRow: [MemoryC
             switch (leftValue, rightValue) {
             case (.booleanValue(let leftBool), .booleanValue(let rightBool)):
                 return .booleanValue(leftBool || rightBool)
+            case (.null, _):
+                return rightValue
+            case (_, .null):
+                return leftValue
             default:
                 return nil
             }
@@ -532,6 +546,8 @@ func evaluateExpression(_ expr: Expression, _ table: Table, _ tableRow: [MemoryC
             switch (leftValue, rightValue) {
             case (.intValue(let leftInt), .intValue(let rightInt)):
                 return .intValue(leftInt + rightInt)
+            case (.null, .intValue), (.intValue, .null):
+                return .null
             default:
                 return nil
             }
@@ -539,6 +555,8 @@ func evaluateExpression(_ expr: Expression, _ table: Table, _ tableRow: [MemoryC
             switch (leftValue, rightValue) {
             case (.intValue(let leftInt), .intValue(let rightInt)):
                 return .intValue(leftInt * rightInt)
+            case (.null, .intValue), (.intValue, .null):
+                return .null
             default:
                 return nil
             }
@@ -546,6 +564,8 @@ func evaluateExpression(_ expr: Expression, _ table: Table, _ tableRow: [MemoryC
             switch (leftValue, rightValue) {
             case (.textValue(let leftText), .textValue(let rightText)):
                 return .textValue(leftText + rightText)
+            case (.null, .textValue), (.textValue, .null):
+                return .null
             default:
                 return nil
             }
@@ -557,6 +577,8 @@ func evaluateExpression(_ expr: Expression, _ table: Table, _ tableRow: [MemoryC
                 return .booleanValue(leftInt == rightInt)
             case (.textValue(let leftText), .textValue(let rightText)):
                 return .booleanValue(leftText == rightText)
+            case (.null, _), (_, .null):
+                return .booleanValue(false)
             default:
                 return nil
             }
@@ -568,6 +590,8 @@ func evaluateExpression(_ expr: Expression, _ table: Table, _ tableRow: [MemoryC
                 return .booleanValue(leftInt != rightInt)
             case (.textValue(let leftText), .textValue(let rightText)):
                 return .booleanValue(leftText != rightText)
+            case (.null, _), (_, .null):
+                return .booleanValue(false)
             default:
                 return nil
             }
