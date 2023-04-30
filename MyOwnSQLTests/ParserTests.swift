@@ -274,12 +274,54 @@ class ParserTests: XCTestCase {
         let expectedStatement = CreateStatement(
             Token(kind: .identifier("foo"), location: Location(line: 0, column: 13)),
             [
-                .implicitlyNullableColumn(Token(kind: .identifier("bar"), location: Location(line: 0, column: 18)),
-                        Token(kind: .keyword(Keyword(rawValue: "int")!), location: Location(line: 0, column: 22))),
-                .implicitlyNullableColumn(Token(kind: .identifier("baz"), location: Location(line: 0, column: 27)),
-                        Token(kind: .keyword(Keyword(rawValue: "text")!), location: Location(line: 0, column: 31))),
-                .implicitlyNullableColumn(Token(kind: .identifier("quux"), location: Location(line: 0, column: 37)),
-                        Token(kind: .keyword(Keyword(rawValue: "boolean")!), location: Location(line: 0, column: 42))),
+                .implicitlyNullableColumn(
+                    Token(kind: .identifier("bar"), location: Location(line: 0, column: 18)),
+                    Token(kind: .keyword(.int), location: Location(line: 0, column: 22))
+                ),
+                .implicitlyNullableColumn(
+                    Token(kind: .identifier("baz"), location: Location(line: 0, column: 27)),
+                    Token(kind: .keyword(.text), location: Location(line: 0, column: 31))
+                ),
+                .implicitlyNullableColumn(
+                    Token(kind: .identifier("quux"), location: Location(line: 0, column: 37)),
+                    Token(kind: .keyword(.boolean), location: Location(line: 0, column: 42))
+                ),
+            ]
+        )
+        XCTAssertEqual(statement, expectedStatement)
+    }
+
+    func testParseCreateStatementWithNullQualifiers() throws {
+        let source = "CREATE TABLE foo(bar INT, baz TEXT NULL, quux BOOLEAN NOT NULL)"
+        guard case .success(let tokens) = lex(source) else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
+
+        guard case .success(_, .create(let statement)) = parseCreateStatement(tokens, 0) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+        let expectedStatement = CreateStatement(
+            Token(kind: .identifier("foo"), location: Location(line: 0, column: 13)),
+            [
+                .implicitlyNullableColumn(
+                    Token(kind: .identifier("bar"), location: Location(line: 0, column: 17)),
+                    Token(kind: .keyword(.int), location: Location(line: 0, column: 21))
+                ),
+                .explicitlyNullableColumn(
+                    Token(kind: .identifier("baz"), location: Location(line: 0, column: 26)),
+                    Token(kind: .keyword(.text), location: Location(line: 0, column: 30)),
+                    Token(kind: .keyword(.null), location: Location(line: 0, column: 35))
+                ),
+                .notNullableColumn(
+                    Token(kind: .identifier("quux"), location: Location(line: 0, column: 41)),
+                    Token(kind: .keyword(.boolean), location: Location(line: 0, column: 46)),
+                    [
+                        Token(kind: .keyword(.not), location: Location(line: 0, column: 54)),
+                        Token(kind: .keyword(.null), location: Location(line: 0, column: 58))
+                    ]
+                ),
             ]
         )
         XCTAssertEqual(statement, expectedStatement)
