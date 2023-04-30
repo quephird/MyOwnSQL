@@ -11,6 +11,7 @@ enum MemoryCell: Equatable {
     case intValue(Int)
     case textValue(String)
     case booleanValue(Bool)
+    case null
 }
 
 enum ColumnType {
@@ -42,11 +43,13 @@ struct ResultSet: Equatable {
 class Table {
     var columnNames: [String]
     var columnTypes: [ColumnType]
+    var columnNullalities: [Bool]
     var data: [String : [MemoryCell]]
 
-    init(_ columnNames: [String], _ columnTypes: [ColumnType]) {
+    init(_ columnNames: [String], _ columnTypes: [ColumnType], _ columnNullalities: [Bool]) {
         self.columnNames = columnNames
         self.columnTypes = columnTypes
+        self.columnNullalities = columnNullalities
         self.data = [:]
     }
 }
@@ -104,6 +107,7 @@ class MemoryBackend {
 
         var columnNames: [String] = []
         var columnTypes: [ColumnType] = []
+        var columnNullalities: [Bool] = []
         for column in create.columns {
             switch column.nameToken.kind {
             case .identifier(let name):
@@ -127,9 +131,11 @@ class MemoryBackend {
             default:
                 return .failure(.misc("Invalid token for column type"))
             }
+
+            columnNullalities.append(column.isNullable)
         }
 
-        let newTable = Table(columnNames, columnTypes)
+        let newTable = Table(columnNames, columnTypes, columnNullalities)
         self.tables[tableName] = newTable
         return .successfulCreateTable
     }
@@ -145,10 +151,13 @@ class MemoryBackend {
                 }
 
                 var newRow: [MemoryCell] = []
-                for item in insert.items {
+                for (i, item) in insert.items.enumerated() {
                     switch item {
                     case .term(let token):
                         if let newCell = makeMemoryCell(token) {
+                            if case .null = newCell, !table.columnNullalities[i] {
+                                return .failure(.cannotInsertNull(table.columnNames[i]))
+                            }
                             newRow.append(newCell)
                         } else {
                             return .failure(.misc("Unable to create cell value from token"))
@@ -239,6 +248,9 @@ class MemoryBackend {
                                 columns.append(Column("col_\(i)", .text))
                             case .booleanValue:
                                 columns.append(Column("col_\(i)", .boolean))
+                            // TODO: Need to think about this more deeply...
+                            case .null:
+                                columns.append(Column("col_\(i)", .text))
                             }
                         }
                     }
@@ -261,6 +273,9 @@ class MemoryBackend {
                             columns.append(Column(alias, .text))
                         case .booleanValue:
                             columns.append(Column(alias, .boolean))
+                        // TODO: Need to think about this more deeply...
+                        case .null:
+                            columns.append(Column(alias, .text))
                         }
                     }
 
@@ -484,6 +499,8 @@ func evaluateExpression(_ expr: Expression, _ table: Table, _ tableRow: [MemoryC
                 }
             }
             return nil
+        case .keyword(.null):
+            return .null
         default:
             return nil
         }
@@ -581,6 +598,8 @@ func makeMemoryCell(_ token: Token) -> MemoryCell? {
         default:
             return .booleanValue(false)
         }
+    case .keyword(.null):
+        return .null
     default:
         return nil
     }

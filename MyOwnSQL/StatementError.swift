@@ -13,6 +13,7 @@ enum StatementError: Error, Equatable, LocalizedError {
     case tableDoesNotExist(String)
     case columnDoesNotExist(String)
     case whereClauseNotBooleanExpression
+    case cannotInsertNull(String)
     case typeMismatch
     case notEnoughValues
     case tooManyValues
@@ -31,6 +32,8 @@ enum StatementError: Error, Equatable, LocalizedError {
             return "Column \(columnName) does not exist"
         case .whereClauseNotBooleanExpression:
             return "WHERE clause must be boolean expression"
+        case .cannotInsertNull(let columnName):
+            return "Cannot insert NULL into column \(columnName)"
         case .typeMismatch:
             return "Type mismatch in SET clause"
         case .notEnoughValues:

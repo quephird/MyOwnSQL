@@ -61,6 +61,8 @@ func printResultSet(_ resultSet: ResultSet) {
                 printedValue = string
             case .booleanValue(let boolean):
                 printedValue = String(boolean)
+            case .null:
+                printedValue = ""
             }
             if printedValue.count > columnWidths[i] {
                 columnWidths[i] = printedValue.count
@@ -93,6 +95,8 @@ func printResultSet(_ resultSet: ResultSet) {
                 printedValue = string
             case .booleanValue(let boolean):
                 printedValue = String(boolean)
+            case .null:
+                printedValue = ""
             }
             rowLine.append("| ")
             rowLine.append(printedValue.padding(toLength: columnWidths[i], withPad: " ", startingAt: 0))

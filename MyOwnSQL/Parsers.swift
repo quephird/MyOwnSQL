@@ -39,7 +39,7 @@ func parseTermExpression(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperRe
     // TODO: Consider instead being able to handle tokens
     //       for true and false keywords, and removing the
     //       boolean token type
-    case .identifier, .string, .numeric, .boolean:
+    case .identifier, .string, .numeric, .boolean, .keyword(.null):
         return .success(tokenCursor+1, Expression.term(maybeTermToken))
     default:
         return .failure("Term expression not found")
