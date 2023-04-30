@@ -274,11 +274,11 @@ class ParserTests: XCTestCase {
         let expectedStatement = CreateStatement(
             Token(kind: .identifier("foo"), location: Location(line: 0, column: 13)),
             [
-                .column(Token(kind: .identifier("bar"), location: Location(line: 0, column: 18)),
+                .implicitlyNullableColumn(Token(kind: .identifier("bar"), location: Location(line: 0, column: 18)),
                         Token(kind: .keyword(Keyword(rawValue: "int")!), location: Location(line: 0, column: 22))),
-                .column(Token(kind: .identifier("baz"), location: Location(line: 0, column: 27)),
+                .implicitlyNullableColumn(Token(kind: .identifier("baz"), location: Location(line: 0, column: 27)),
                         Token(kind: .keyword(Keyword(rawValue: "text")!), location: Location(line: 0, column: 31))),
-                .column(Token(kind: .identifier("quux"), location: Location(line: 0, column: 37)),
+                .implicitlyNullableColumn(Token(kind: .identifier("quux"), location: Location(line: 0, column: 37)),
                         Token(kind: .keyword(Keyword(rawValue: "boolean")!), location: Location(line: 0, column: 42))),
             ]
         )

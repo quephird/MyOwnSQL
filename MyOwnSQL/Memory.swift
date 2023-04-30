@@ -104,15 +104,15 @@ class MemoryBackend {
 
         var columnNames: [String] = []
         var columnTypes: [ColumnType] = []
-        for case .column(let nameToken, let typeToken) in create.columns {
-            switch nameToken.kind {
+        for column in create.columns {
+            switch column.nameToken.kind {
             case .identifier(let name):
                 columnNames.append(name)
             default:
                 return .failure(.misc("Invalid token for column name"))
             }
 
-            switch typeToken.kind {
+            switch column.typeToken.kind {
             case .keyword(let keyword):
                 switch keyword {
                 case .text:

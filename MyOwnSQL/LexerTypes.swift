@@ -30,6 +30,9 @@ enum Keyword: String, CaseIterable {
     case `as` = "as"
     case and = "and"
     case or = "or"
+    case not = "not"
+    case null = "null"
+    case `is` = "is"
 }
 
 enum Symbol: String, CaseIterable {
