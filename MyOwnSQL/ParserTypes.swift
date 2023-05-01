@@ -7,6 +7,7 @@
 
 indirect enum Expression: Equatable {
     case term(Token)
+    case unary(Expression, [Token])
     case binary(Expression, Expression, Token)
 }
 

@@ -427,6 +427,23 @@ class MemoryBackend {
             default:
                 return .failure(StatementError.invalidExpression)
             }
+        case .unary(_, let tokens):
+            // For the time being, the only two operators supported
+            // yield boolean values no matter what type the subexpression is,
+            // and so we don't need to type check it.
+
+            if tokens.count == 3,
+                case .keyword(.is) = tokens[0].kind,
+                case .keyword(.not) = tokens[1].kind,
+                case .keyword(.null) = tokens[2].kind {
+                return .success(.boolean)
+            } else if tokens.count == 2,
+                case .keyword(.is) = tokens[0].kind,
+                case .keyword(.null) = tokens[1].kind {
+                return .success(.boolean)
+            } else {
+                return .failure(StatementError.invalidExpression)
+            }
         case .binary(let leftExpr, let rightExpr, let operatorToken):
             var leftType: ColumnType
             switch typeCheck(leftExpr, table) {
@@ -451,13 +468,6 @@ class MemoryBackend {
                     return .success(.boolean)
                 default:
                     return .failure(StatementError.invalidExpression)
-                }
-            case .keyword(.is):
-                switch (leftType, rightType) {
-                case (.null, _), (_, .null):
-                    return .success(.boolean)
-                default:
-                    return .failure(.invalidExpression)
                 }
             case .symbol(.equals), .symbol(.notEquals):
                 if leftType == rightType {
@@ -523,6 +533,37 @@ func evaluateExpression(_ expr: Expression, _ table: Table, _ tableRow: [MemoryC
         default:
             return nil
         }
+    case .unary(let subexpression, let tokens):
+        if tokens.count == 3,
+            case .keyword(.is) = tokens[0].kind,
+            case .keyword(.not) = tokens[1].kind,
+            case .keyword(.null) = tokens[2].kind {
+            guard let subexpressionValue = evaluateExpression(subexpression, table, tableRow) else {
+                return nil
+            }
+
+            switch subexpressionValue {
+            case .null:
+                return .booleanValue(false)
+            default:
+                return .booleanValue(true)
+            }
+        } else if tokens.count == 2,
+            case .keyword(.is) = tokens[0].kind,
+            case .keyword(.null) = tokens[1].kind {
+            guard let subexpressionValue = evaluateExpression(subexpression, table, tableRow) else {
+                return nil
+            }
+
+            switch subexpressionValue {
+            case .null:
+                return .booleanValue(true)
+            default:
+                return .booleanValue(false)
+            }
+        } else {
+            return nil
+        }
     case .binary(let leftExpr, let rightExpr, let operatorToken):
         guard let leftValue = evaluateExpression(leftExpr, table, tableRow) else {
             return nil
@@ -552,13 +593,6 @@ func evaluateExpression(_ expr: Expression, _ table: Table, _ tableRow: [MemoryC
                 return leftValue
             default:
                 return nil
-            }
-        case .keyword(.is):
-            switch (leftValue, rightValue) {
-            case (.null, .null):
-                return .booleanValue(true)
-            default:
-                return .booleanValue(false)
             }
         case .symbol(.plus):
             switch (leftValue, rightValue) {

@@ -304,6 +304,9 @@ class MemoryTests: XCTestCase {
             ("SELECT 1 IS NULL FROM foo;", .booleanValue(false)),
             ("SELECT 'one' IS NULL FROM foo;", .booleanValue(false)),
             ("SELECT TRUE IS NULL FROM foo;", .booleanValue(false)),
+            ("SELECT 1 IS NOT NULL FROM foo;", .booleanValue(true)),
+            ("SELECT 'one' IS NOT NULL FROM foo;", .booleanValue(true)),
+            ("SELECT TRUE IS NOT NULL FROM foo;", .booleanValue(true)),
         ] {
             let results = database.executeStatements(select)
             guard let result = results.first else {

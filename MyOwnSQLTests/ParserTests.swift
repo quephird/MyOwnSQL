@@ -238,6 +238,72 @@ class ParserTests: XCTestCase {
         XCTAssertEqual(statement, expectedStatement)
     }
 
+    func testSelectWithUnaryExpression() throws {
+        let source = "SELECT foo FROM bar WHERE baz IS NOT NULL"
+        guard case .success(let tokens) = lex(source) else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
+
+        guard case .success(_, .select(let statement)) = parseSelectStatement(tokens, 0) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+
+        let expectedStatement = SelectStatement(
+            Token(kind: .identifier("bar"), location: Location(line: 0, column: 16)),
+            [
+                .expression(.term(Token(kind: .identifier("foo"), location: Location(line: 0, column: 7))))
+            ],
+            .unary(
+                .term(Token(kind: .identifier("baz"), location: Location(line: 0, column: 26))),
+                [
+                    Token(kind: .keyword(.is), location: Location(line: 0, column: 30)),
+                    Token(kind: .keyword(.not), location: Location(line: 0, column: 33)),
+                    Token(kind: .keyword(.null), location: Location(line: 0, column: 37)),
+                ]
+            )
+        )
+        XCTAssertEqual(statement, expectedStatement)
+    }
+
+    func testSelectWithUnaryExpressionInsideBinaryExpression() throws {
+        let source = "SELECT foo FROM bar WHERE baz IS NOT NULL AND quux = 42"
+        guard case .success(let tokens) = lex(source) else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
+
+        guard case .success(_, .select(let statement)) = parseSelectStatement(tokens, 0) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+
+        let expectedStatement = SelectStatement(
+            Token(kind: .identifier("bar"), location: Location(line: 0, column: 16)),
+            [
+                .expression(.term(Token(kind: .identifier("foo"), location: Location(line: 0, column: 7))))
+            ],
+            .binary(
+                .unary(
+                    .term(Token(kind: .identifier("baz"), location: Location(line: 0, column: 26))),
+                    [
+                        Token(kind: .keyword(.is), location: Location(line: 0, column: 30)),
+                        Token(kind: .keyword(.not), location: Location(line: 0, column: 33)),
+                        Token(kind: .keyword(.null), location: Location(line: 0, column: 37)),
+                    ]
+                ),
+                .binary(
+                    .term(Token(kind: .identifier("quux"), location: Location(line: 0, column: 46))),
+                    .term(Token(kind: .numeric("42"), location: Location(line: 0, column: 53))),
+                    Token(kind: .symbol(.equals), location: Location(line: 0, column: 51))
+                ),
+                Token(kind: .keyword(.and), location: Location(line: 0, column: 42))
+            )
+        )
+        XCTAssertEqual(statement, expectedStatement)
+    }
+
     func testInvalidSelectStatementsShouldFailToParse() throws {
         for source in [
             "SELECT FROM bar",

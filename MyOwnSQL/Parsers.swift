@@ -78,6 +78,19 @@ func parseExpression(_ tokens: [Token], _ tokenCursor: Int, _ delimeters: [Token
         default:
             return .failure("Could not parse expression")
         }
+
+        if tokenCursorCopy+2 < tokens.count &&
+            .keyword(.is) == tokens[tokenCursorCopy].kind &&
+            .keyword(.not) == tokens[tokenCursorCopy+1].kind &&
+            .keyword(.null) == tokens[tokenCursorCopy+2].kind {
+            expression = .unary(expression, [tokens[tokenCursorCopy], tokens[tokenCursorCopy+1], tokens[tokenCursorCopy+2]])
+            tokenCursorCopy += 3
+        } else if tokenCursorCopy+1 < tokens.count &&
+            .keyword(.is) == tokens[tokenCursorCopy].kind &&
+            .keyword(.null) == tokens[tokenCursorCopy+1].kind {
+            expression = .unary(expression, [tokens[tokenCursorCopy], tokens[tokenCursorCopy+1]])
+            tokenCursorCopy += 2
+        }
     }
 
     // OK... now we've got an expression at this point;
@@ -101,7 +114,6 @@ outer:
         let binaryOperators: [TokenKind] = [
             .keyword(.and),
             .keyword(.or),
-            .keyword(.is),
             .symbol(.equals),
             .symbol(.notEquals),
             .symbol(.concatenate),
