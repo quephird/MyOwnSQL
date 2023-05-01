@@ -448,6 +448,13 @@ class MemoryBackend {
                 default:
                     return .failure(StatementError.invalidExpression)
                 }
+            case .keyword(.is):
+                switch (leftType, rightType) {
+                case (.null, _), (_, .null):
+                    return .success(.boolean)
+                default:
+                    return .failure(.invalidExpression)
+                }
             case .symbol(.equals), .symbol(.notEquals):
                 if leftType == rightType {
                     return .success(.boolean)
@@ -541,6 +548,13 @@ func evaluateExpression(_ expr: Expression, _ table: Table, _ tableRow: [MemoryC
                 return leftValue
             default:
                 return nil
+            }
+        case .keyword(.is):
+            switch (leftValue, rightValue) {
+            case (.null, .null):
+                return .booleanValue(true)
+            default:
+                return .booleanValue(false)
             }
         case .symbol(.plus):
             switch (leftValue, rightValue) {

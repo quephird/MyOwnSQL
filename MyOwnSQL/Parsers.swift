@@ -101,6 +101,7 @@ outer:
         let binaryOperators: [TokenKind] = [
             .keyword(.and),
             .keyword(.or),
+            .keyword(.is),
             .symbol(.equals),
             .symbol(.notEquals),
             .symbol(.concatenate),

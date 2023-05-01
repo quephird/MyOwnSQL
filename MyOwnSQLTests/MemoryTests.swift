@@ -301,6 +301,9 @@ class MemoryTests: XCTestCase {
             ("SELECT 1 != NULL FROM foo;", .booleanValue(false)),
             ("SELECT TRUE AND NULL FROM foo;", .booleanValue(false)),
             ("SELECT TRUE OR NULL FROM foo;", .booleanValue(true)),
+            ("SELECT 1 IS NULL FROM foo;", .booleanValue(false)),
+            ("SELECT 'one' IS NULL FROM foo;", .booleanValue(false)),
+            ("SELECT TRUE IS NULL FROM foo;", .booleanValue(false)),
         ] {
             let results = database.executeStatements(select)
             guard let result = results.first else {
@@ -320,6 +323,40 @@ class MemoryTests: XCTestCase {
             let actualRow = resultSet.rows[0]
             XCTAssertEqual(actualRow, expectedRow)
         }
+    }
+
+    func testSelectWithWhereClauseWithIsExpressionAndNull() throws {
+        let database = MemoryBackend()
+        let create = "CREATE TABLE clothes(id INT NOT NULL, description TEXT NOT NULL, comment TEXT NULL);"
+        let _ = database.executeStatements(create)
+        for insert in [
+            "INSERT INTO clothes VALUES(1, 'Velvet dress', 'This one is purple');",
+            "INSERT INTO clothes VALUES(2, 'Linen shirt', NULL);",
+            "INSERT INTO clothes VALUES(3, 'Catsuit from Black Milk', 'This one is HAWT');",
+        ] {
+            let _ = database.executeStatements(insert)
+        }
+
+        let select = "SELECT * FROM clothes WHERE comment IS NULL;"
+        let results = database.executeStatements(select)
+        guard let result = results.first else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+
+        guard case .successfulSelect(let resultSet) = result else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+
+        XCTAssertEqual(resultSet.rows.count, 1)
+        let expectedRow: [MemoryCell] = [
+            .intValue(2),
+            .textValue("Linen shirt"),
+            .null,
+        ]
+        let actualRow = resultSet.rows[0]
+        XCTAssertEqual(actualRow, expectedRow)
     }
 
     func testSelectFailsForBadExpressionInSelectClause() throws {
