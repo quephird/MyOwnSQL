@@ -148,7 +148,7 @@ class MemoryTests: XCTestCase {
             XCTFail("Something unexpected happened")
             return
         }
-        XCTAssertEqual(result, .failure(.cannotInsertNull("id")))
+        XCTAssertEqual(result, .failure(.columnCannotBeNull("id")))
     }
 
     func testSelectLiteralsStatement() throws {
@@ -620,6 +620,54 @@ class MemoryTests: XCTestCase {
             } else {
                 XCTAssertEqual(row[1], .booleanValue(false))
             }
+        }
+    }
+
+    func testUpdateSetsOneColumnToNull() throws {
+        let database = MemoryBackend()
+        let create = "CREATE TABLE clothes(id INT NOT NULL, description TEXT NOT NULL, comment TEXT NULL);"
+        let _ = database.executeStatements(create)
+        let insert = "INSERT INTO clothes VALUES(2, 'Linen shirt', 'This is my favorite');"
+        let _ = database.executeStatements(insert)
+
+        let update = "UPDATE clothes SET comment = NULL;"
+        let _ = database.executeStatements(update)
+
+        let select = "SELECT comment FROM clothes;"
+        let results = database.executeStatements(select)
+        guard let result = results.first else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+        guard case .successfulSelect(let resultSet) = result else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+
+        XCTAssertEqual(resultSet.rows.count, 1)
+        let expectedRow: [MemoryCell] = [
+            .null,
+        ]
+        let actualRow = resultSet.rows[0]
+        XCTAssertEqual(actualRow, expectedRow)
+    }
+
+    func testUpdateFailsDueToColumnNotBeingNullable() throws {
+        let database = MemoryBackend()
+        let create = "CREATE TABLE clothes(id INT NOT NULL, description TEXT NOT NULL, comment TEXT NULL);"
+        let _ = database.executeStatements(create)
+        let insert = "INSERT INTO clothes VALUES(1, 'Velvet dress', 'This is my favorite');"
+        let _ = database.executeStatements(insert)
+
+        let update = "UPDATE clothes SET description = NULL;"
+        let results = database.executeStatements(update)
+        guard let result = results.first else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+        guard case .failure(.columnCannotBeNull("description")) = result else {
+            XCTFail("Something unexpected happened")
+            return
         }
     }
 }

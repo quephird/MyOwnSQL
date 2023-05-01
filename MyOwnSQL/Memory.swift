@@ -157,7 +157,7 @@ class MemoryBackend {
                     case .term(let token):
                         if let newCell = makeMemoryCell(token) {
                             if case .null = newCell, !table.columnNullalities[i] {
-                                return .failure(.cannotInsertNull(table.columnNames[i]))
+                                return .failure(.columnCannotBeNull(table.columnNames[i]))
                             }
                             newRow.append(newCell)
                         } else {
@@ -365,7 +365,11 @@ class MemoryBackend {
                     return .failure(error)
                 case .success(let expressionType):
                     let columnType = table.columnTypes[columnIndex]
-                    if expressionType != columnType {
+                    if expressionType == .null && !table.columnNullalities[columnIndex] {
+                        return .failure(.columnCannotBeNull(table.columnNames[columnIndex]))
+                    } else if expressionType != .null && expressionType != columnType {
+                        // TODO: This is super hacky and I need to deal with nulls better;
+                        //       I'm conflating types and values here and a couple of other places.
                         return .failure(.typeMismatch)
                     }
                 }
