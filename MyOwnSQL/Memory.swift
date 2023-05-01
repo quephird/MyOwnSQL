@@ -11,12 +11,14 @@ enum MemoryCell: Equatable {
     case intValue(Int)
     case textValue(String)
     case booleanValue(Bool)
+    case null
 }
 
 enum ColumnType {
     case int
     case text
     case boolean
+    case null
 }
 
 struct Column: Equatable {
@@ -42,11 +44,13 @@ struct ResultSet: Equatable {
 class Table {
     var columnNames: [String]
     var columnTypes: [ColumnType]
+    var columnNullalities: [Bool]
     var data: [String : [MemoryCell]]
 
-    init(_ columnNames: [String], _ columnTypes: [ColumnType]) {
+    init(_ columnNames: [String], _ columnTypes: [ColumnType], _ columnNullalities: [Bool]) {
         self.columnNames = columnNames
         self.columnTypes = columnTypes
+        self.columnNullalities = columnNullalities
         self.data = [:]
     }
 }
@@ -104,15 +108,16 @@ class MemoryBackend {
 
         var columnNames: [String] = []
         var columnTypes: [ColumnType] = []
-        for case .column(let nameToken, let typeToken) in create.columns {
-            switch nameToken.kind {
+        var columnNullalities: [Bool] = []
+        for column in create.columns {
+            switch column.nameToken.kind {
             case .identifier(let name):
                 columnNames.append(name)
             default:
                 return .failure(.misc("Invalid token for column name"))
             }
 
-            switch typeToken.kind {
+            switch column.typeToken.kind {
             case .keyword(let keyword):
                 switch keyword {
                 case .text:
@@ -127,9 +132,11 @@ class MemoryBackend {
             default:
                 return .failure(.misc("Invalid token for column type"))
             }
+
+            columnNullalities.append(column.isNullable)
         }
 
-        let newTable = Table(columnNames, columnTypes)
+        let newTable = Table(columnNames, columnTypes, columnNullalities)
         self.tables[tableName] = newTable
         return .successfulCreateTable
     }
@@ -145,10 +152,13 @@ class MemoryBackend {
                 }
 
                 var newRow: [MemoryCell] = []
-                for item in insert.items {
+                for (i, item) in insert.items.enumerated() {
                     switch item {
                     case .term(let token):
                         if let newCell = makeMemoryCell(token) {
+                            if case .null = newCell, !table.columnNullalities[i] {
+                                return .failure(.columnCannotBeNull(table.columnNames[i]))
+                            }
                             newRow.append(newCell)
                         } else {
                             return .failure(.misc("Unable to create cell value from token"))
@@ -239,6 +249,9 @@ class MemoryBackend {
                                 columns.append(Column("col_\(i)", .text))
                             case .booleanValue:
                                 columns.append(Column("col_\(i)", .boolean))
+                            // TODO: Need to think about this more deeply...
+                            case .null:
+                                columns.append(Column("col_\(i)", .text))
                             }
                         }
                     }
@@ -261,6 +274,9 @@ class MemoryBackend {
                             columns.append(Column(alias, .text))
                         case .booleanValue:
                             columns.append(Column(alias, .boolean))
+                        // TODO: Need to think about this more deeply...
+                        case .null:
+                            columns.append(Column(alias, .text))
                         }
                     }
 
@@ -349,7 +365,11 @@ class MemoryBackend {
                     return .failure(error)
                 case .success(let expressionType):
                     let columnType = table.columnTypes[columnIndex]
-                    if expressionType != columnType {
+                    if expressionType == .null && !table.columnNullalities[columnIndex] {
+                        return .failure(.columnCannotBeNull(table.columnNames[columnIndex]))
+                    } else if expressionType != .null && expressionType != columnType {
+                        // TODO: This is super hacky and I need to deal with nulls better;
+                        //       I'm conflating types and values here and a couple of other places.
                         return .failure(.typeMismatch)
                     }
                 }
@@ -395,6 +415,8 @@ class MemoryBackend {
                 return .success(.int)
             case .string:
                 return .success(.text)
+            case .keyword(.null):
+                return .success(.null)
             case .identifier(let requestedColumnName):
                 for (i, columnName) in table.columnNames.enumerated() {
                     if requestedColumnName == columnName {
@@ -403,6 +425,23 @@ class MemoryBackend {
                 }
                 return .failure(StatementError.columnDoesNotExist(requestedColumnName))
             default:
+                return .failure(StatementError.invalidExpression)
+            }
+        case .unary(_, let tokens):
+            // For the time being, the only two operators supported
+            // yield boolean values no matter what type the subexpression is,
+            // and so we don't need to type check it.
+
+            if tokens.count == 3,
+                case .keyword(.is) = tokens[0].kind,
+                case .keyword(.not) = tokens[1].kind,
+                case .keyword(.null) = tokens[2].kind {
+                return .success(.boolean)
+            } else if tokens.count == 2,
+                case .keyword(.is) = tokens[0].kind,
+                case .keyword(.null) = tokens[1].kind {
+                return .success(.boolean)
+            } else {
                 return .failure(StatementError.invalidExpression)
             }
         case .binary(let leftExpr, let rightExpr, let operatorToken):
@@ -424,27 +463,32 @@ class MemoryBackend {
 
             switch operatorToken.kind {
             case .keyword(.and), .keyword(.or):
-                if leftType == .boolean && rightType == .boolean {
+                switch (leftType, rightType) {
+                case (.boolean, .boolean), (.null, .boolean), (.boolean, .null):
                     return .success(.boolean)
-                } else {
+                default:
                     return .failure(StatementError.invalidExpression)
                 }
             case .symbol(.equals), .symbol(.notEquals):
                 if leftType == rightType {
                     return .success(.boolean)
+                } else if leftType == .null || rightType == .null {
+                    return .success(.boolean)
                 } else {
                     return .failure(StatementError.invalidExpression)
                 }
             case .symbol(.plus), .symbol(.asterisk):
-                if leftType == .int && rightType == .int {
+                switch (leftType, rightType) {
+                case (.int, .int), (.null, .int), (.int, .null):
                     return .success(.int)
-                } else {
+                default:
                     return .failure(StatementError.invalidExpression)
                 }
             case .symbol(.concatenate):
-                if leftType == .text && rightType == .text {
+                switch (leftType, rightType) {
+                case (.text, .text), (.null, .text), (.text, .null):
                     return .success(.text)
-                } else {
+                default:
                     return .failure(StatementError.invalidExpression)
                 }
             default:
@@ -471,7 +515,7 @@ func evaluateExpression(_ expr: Expression, _ table: Table, _ tableRow: [MemoryC
                 return nil
             }
         case .boolean(let value):
-            switch value {
+            switch value.lowercased() {
             case "true":
                 return .booleanValue(true)
             default:
@@ -484,7 +528,40 @@ func evaluateExpression(_ expr: Expression, _ table: Table, _ tableRow: [MemoryC
                 }
             }
             return nil
+        case .keyword(.null):
+            return .null
         default:
+            return nil
+        }
+    case .unary(let subexpression, let tokens):
+        if tokens.count == 3,
+            case .keyword(.is) = tokens[0].kind,
+            case .keyword(.not) = tokens[1].kind,
+            case .keyword(.null) = tokens[2].kind {
+            guard let subexpressionValue = evaluateExpression(subexpression, table, tableRow) else {
+                return nil
+            }
+
+            switch subexpressionValue {
+            case .null:
+                return .booleanValue(false)
+            default:
+                return .booleanValue(true)
+            }
+        } else if tokens.count == 2,
+            case .keyword(.is) = tokens[0].kind,
+            case .keyword(.null) = tokens[1].kind {
+            guard let subexpressionValue = evaluateExpression(subexpression, table, tableRow) else {
+                return nil
+            }
+
+            switch subexpressionValue {
+            case .null:
+                return .booleanValue(true)
+            default:
+                return .booleanValue(false)
+            }
+        } else {
             return nil
         }
     case .binary(let leftExpr, let rightExpr, let operatorToken):
@@ -501,6 +578,8 @@ func evaluateExpression(_ expr: Expression, _ table: Table, _ tableRow: [MemoryC
             switch (leftValue, rightValue) {
             case (.booleanValue(let leftBool), .booleanValue(let rightBool)):
                 return .booleanValue(leftBool && rightBool)
+            case (.null, _), (_, .null):
+                return .booleanValue(false)
             default:
                 return nil
             }
@@ -508,6 +587,10 @@ func evaluateExpression(_ expr: Expression, _ table: Table, _ tableRow: [MemoryC
             switch (leftValue, rightValue) {
             case (.booleanValue(let leftBool), .booleanValue(let rightBool)):
                 return .booleanValue(leftBool || rightBool)
+            case (.null, _):
+                return rightValue
+            case (_, .null):
+                return leftValue
             default:
                 return nil
             }
@@ -515,6 +598,8 @@ func evaluateExpression(_ expr: Expression, _ table: Table, _ tableRow: [MemoryC
             switch (leftValue, rightValue) {
             case (.intValue(let leftInt), .intValue(let rightInt)):
                 return .intValue(leftInt + rightInt)
+            case (.null, .intValue), (.intValue, .null):
+                return .null
             default:
                 return nil
             }
@@ -522,6 +607,8 @@ func evaluateExpression(_ expr: Expression, _ table: Table, _ tableRow: [MemoryC
             switch (leftValue, rightValue) {
             case (.intValue(let leftInt), .intValue(let rightInt)):
                 return .intValue(leftInt * rightInt)
+            case (.null, .intValue), (.intValue, .null):
+                return .null
             default:
                 return nil
             }
@@ -529,6 +616,8 @@ func evaluateExpression(_ expr: Expression, _ table: Table, _ tableRow: [MemoryC
             switch (leftValue, rightValue) {
             case (.textValue(let leftText), .textValue(let rightText)):
                 return .textValue(leftText + rightText)
+            case (.null, .textValue), (.textValue, .null):
+                return .null
             default:
                 return nil
             }
@@ -540,6 +629,8 @@ func evaluateExpression(_ expr: Expression, _ table: Table, _ tableRow: [MemoryC
                 return .booleanValue(leftInt == rightInt)
             case (.textValue(let leftText), .textValue(let rightText)):
                 return .booleanValue(leftText == rightText)
+            case (.null, _), (_, .null):
+                return .booleanValue(false)
             default:
                 return nil
             }
@@ -551,6 +642,8 @@ func evaluateExpression(_ expr: Expression, _ table: Table, _ tableRow: [MemoryC
                 return .booleanValue(leftInt != rightInt)
             case (.textValue(let leftText), .textValue(let rightText)):
                 return .booleanValue(leftText != rightText)
+            case (.null, _), (_, .null):
+                return .booleanValue(false)
             default:
                 return nil
             }
@@ -581,6 +674,8 @@ func makeMemoryCell(_ token: Token) -> MemoryCell? {
         default:
             return .booleanValue(false)
         }
+    case .keyword(.null):
+        return .null
     default:
         return nil
     }

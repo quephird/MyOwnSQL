@@ -7,6 +7,7 @@
 
 indirect enum Expression: Equatable {
     case term(Token)
+    case unary(Expression, [Token])
     case binary(Expression, Expression, Token)
 }
 
@@ -17,7 +18,44 @@ enum SelectItem: Equatable {
 }
 
 enum Definition: Equatable {
-    case column(Token, Token)
+    case implicitlyNullableColumn(Token, Token)
+    case explicitlyNullableColumn(Token, Token, Token)
+    case notNullableColumn(Token, Token, [Token])
+}
+
+extension Definition {
+    var nameToken: Token {
+        switch self {
+        case .implicitlyNullableColumn(let nameToken, _):
+            return nameToken
+        case .explicitlyNullableColumn(let nameToken, _, _):
+            return nameToken
+        case .notNullableColumn(let nameToken, _, _):
+            return nameToken
+        }
+    }
+
+    var typeToken: Token {
+        switch self {
+        case .implicitlyNullableColumn(_, let typeToken):
+            return typeToken
+        case .explicitlyNullableColumn(_, let typeToken, _):
+            return typeToken
+        case .notNullableColumn(_, let typeToken, _):
+            return typeToken
+        }
+    }
+
+    var isNullable: Bool {
+        switch self {
+        case .implicitlyNullableColumn(_, _):
+            return true
+        case .explicitlyNullableColumn(_, _, _):
+            return true
+        case .notNullableColumn(_, _, _):
+            return false
+        }
+    }
 }
 
 struct CreateStatement: Equatable {

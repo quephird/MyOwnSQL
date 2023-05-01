@@ -39,7 +39,7 @@ func parseTermExpression(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperRe
     // TODO: Consider instead being able to handle tokens
     //       for true and false keywords, and removing the
     //       boolean token type
-    case .identifier, .string, .numeric, .boolean:
+    case .identifier, .string, .numeric, .boolean, .keyword(.null):
         return .success(tokenCursor+1, Expression.term(maybeTermToken))
     default:
         return .failure("Term expression not found")
@@ -77,6 +77,19 @@ func parseExpression(_ tokens: [Token], _ tokenCursor: Int, _ delimeters: [Token
             tokenCursorCopy = newTokenCursor
         default:
             return .failure("Could not parse expression")
+        }
+
+        if tokenCursorCopy+2 < tokens.count &&
+            .keyword(.is) == tokens[tokenCursorCopy].kind &&
+            .keyword(.not) == tokens[tokenCursorCopy+1].kind &&
+            .keyword(.null) == tokens[tokenCursorCopy+2].kind {
+            expression = .unary(expression, [tokens[tokenCursorCopy], tokens[tokenCursorCopy+1], tokens[tokenCursorCopy+2]])
+            tokenCursorCopy += 3
+        } else if tokenCursorCopy+1 < tokens.count &&
+            .keyword(.is) == tokens[tokenCursorCopy].kind &&
+            .keyword(.null) == tokens[tokenCursorCopy+1].kind {
+            expression = .unary(expression, [tokens[tokenCursorCopy], tokens[tokenCursorCopy+1]])
+            tokenCursorCopy += 2
         }
     }
 
@@ -253,7 +266,7 @@ func parseSelectStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
 
 // We expect each item in the list of column definitions to be in the form:
 //
-//     <column name> <column type>
+//     <column name> <column type> <optional NULL or NOT NULL designation>
 //
 // ... and separated by a comma
 func parseColumns(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<[Definition]> {
@@ -272,9 +285,19 @@ func parseColumns(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<[D
               [Keyword.int, Keyword.text, Keyword.boolean].contains(keyword) else {
             return .failure("Missing column datatype")
         }
-        let column = Definition.column(name, maybeDatatype)
-        columns.append(column)
         tokenCursorCopy += 1
+
+        let column: Definition
+        if tokenCursorCopy+1 < tokens.count, case .keyword(.not) = tokens[tokenCursorCopy].kind, case .keyword(.null) = tokens[tokenCursorCopy+1].kind {
+            column = .notNullableColumn(name, maybeDatatype, [tokens[tokenCursorCopy], tokens[tokenCursorCopy+1]])
+            tokenCursorCopy += 2
+        } else if tokenCursorCopy < tokens.count, case .keyword(.null) = tokens[tokenCursorCopy].kind {
+            column = .explicitlyNullableColumn(name, maybeDatatype, tokens[tokenCursorCopy])
+            tokenCursorCopy += 1
+        } else {
+            column = .implicitlyNullableColumn(name, maybeDatatype)
+        }
+        columns.append(column)
 
         guard tokenCursorCopy < tokens.count, case .symbol(.comma) = tokens[tokenCursorCopy].kind else {
             break
