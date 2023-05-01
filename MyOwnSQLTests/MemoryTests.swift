@@ -328,7 +328,7 @@ class MemoryTests: XCTestCase {
         }
     }
 
-    func testSelectWithWhereClauseWithIsExpressionAndNull() throws {
+    func testSelectWithWhereClauseWithIsNullExpression() throws {
         let database = MemoryBackend()
         let create = "CREATE TABLE clothes(id INT NOT NULL, description TEXT NOT NULL, comment TEXT NULL);"
         let _ = database.executeStatements(create)
@@ -360,6 +360,42 @@ class MemoryTests: XCTestCase {
         ]
         let actualRow = resultSet.rows[0]
         XCTAssertEqual(actualRow, expectedRow)
+    }
+
+    func testSelectWithWhereClauseWithNestedIsNullExpression() throws {
+        let database = MemoryBackend()
+        let create = "CREATE TABLE clothes(id INT NOT NULL, description TEXT NOT NULL, comment TEXT NULL);"
+        let _ = database.executeStatements(create)
+        for insert in [
+            "INSERT INTO clothes VALUES(1, 'Velvet dress', 'This one is purple');",
+            "INSERT INTO clothes VALUES(2, 'Linen shirt', NULL);",
+            "INSERT INTO clothes VALUES(3, 'Catsuit from Black Milk', 'This one is HAWT');",
+        ] {
+            let _ = database.executeStatements(insert)
+        }
+
+        let select = "SELECT * FROM clothes WHERE comment IS NULL OR id = 1;"
+        let results = database.executeStatements(select)
+        guard let result = results.first else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+
+        guard case .successfulSelect(let resultSet) = result else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+
+        XCTAssertEqual(resultSet.rows.count, 2)
+        let expectedIds = [1, 2]
+        let actualIds: [Int] = resultSet.rows.map { row in
+            if case .intValue(let id) = row[0] {
+                return id
+            } else {
+                return -1
+            }
+        }.sorted()
+        XCTAssertEqual(actualIds, expectedIds)
     }
 
     func testSelectFailsForBadExpressionInSelectClause() throws {
