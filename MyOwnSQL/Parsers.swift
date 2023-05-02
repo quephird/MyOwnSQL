@@ -388,29 +388,41 @@ func parseInsertValues(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResu
     return .success(tokenCursorCopy, expressions)
 }
 
+// Each tuple to be parsed for an INSERT statement should have the following structure
+//
+//     (expression1, expression2, ..., expressionn)
 func parseInsertTuples(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<[[Expression]]> {
     var tokenCursorCopy = tokenCursor
     var tuples: [[Expression]] = []
 
-    if tokenCursorCopy >= tokens.count || tokens[tokenCursorCopy].kind != TokenKind.symbol(.leftParenthesis) {
-        return .failure("Missing left parenthesis")
-    }
-    tokenCursorCopy += 1
+    while tokenCursorCopy < tokens.count {
+        if tokenCursorCopy >= tokens.count || tokens[tokenCursorCopy].kind != TokenKind.symbol(.leftParenthesis) {
+            return .failure("Missing left parenthesis")
+        }
+        tokenCursorCopy += 1
 
-    switch parseInsertValues(tokens, tokenCursorCopy) {
-    case .failure(let errorMessage):
-        return .failure(errorMessage)
-    case .success(let newTokenCursor, let newExpressions):
-        tokenCursorCopy = newTokenCursor
-        tuples.append(newExpressions)
-    default:
-        return .failure("Unexpected error occurred")
-    }
+        switch parseInsertValues(tokens, tokenCursorCopy) {
+        case .failure(let errorMessage):
+            return .failure(errorMessage)
+        case .success(let newTokenCursor, let newExpressions):
+            tokenCursorCopy = newTokenCursor
+            tuples.append(newExpressions)
+        default:
+            return .failure("Unexpected error occurred")
+        }
 
-    if tokenCursorCopy >= tokens.count || tokens[tokenCursorCopy].kind != TokenKind.symbol(.rightParenthesis) {
-        return .failure("Missing right parenthesis")
+        if tokenCursorCopy >= tokens.count || tokens[tokenCursorCopy].kind != TokenKind.symbol(.rightParenthesis) {
+            return .failure("Missing right parenthesis")
+        }
+        tokenCursorCopy += 1
+
+        if tokenCursorCopy < tokens.count, case .symbol(.comma) = tokens[tokenCursorCopy].kind {
+            tokenCursorCopy += 1
+            continue
+        } else {
+            break
+        }
     }
-    tokenCursorCopy += 1
 
     return .success(tokenCursorCopy, tuples)
 }
@@ -420,7 +432,6 @@ func parseInsertTuples(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResu
 //     INSERT INTO <table name> VALUES <one or more tuples of expressions>
 func parseInsertStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<Statement> {
     var tokenCursorCopy = tokenCursor
-//    var expressions: [Expression]
 
     if tokens[tokenCursorCopy].kind != TokenKind.keyword(.insert) {
         return .noMatch
@@ -443,25 +454,6 @@ func parseInsertStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
     }
     tokenCursorCopy += 1
 
-//    if tokenCursorCopy >= tokens.count || tokens[tokenCursorCopy].kind != TokenKind.symbol(.leftParenthesis) {
-//        return .failure("Missing left parenthesis")
-//    }
-//    tokenCursorCopy += 1
-//
-//    switch parseInsertValues(tokens, tokenCursorCopy) {
-//    case .failure(let errorMessage):
-//        return .failure(errorMessage)
-//    case .success(let newTokenCursor, let newExpressions):
-//        tokenCursorCopy = newTokenCursor
-//        expressions = newExpressions
-//    default:
-//        return .failure("Unexpected error occurred")
-//    }
-//
-//    if tokenCursorCopy >= tokens.count || tokens[tokenCursorCopy].kind != TokenKind.symbol(.rightParenthesis) {
-//        return .failure("Missing right parenthesis")
-//    }
-//    tokenCursorCopy += 1
     var tuples: [[Expression]]
     switch parseInsertTuples(tokens, tokenCursorCopy) {
     case .success(let newTokenCursor, let parsedTuples):
