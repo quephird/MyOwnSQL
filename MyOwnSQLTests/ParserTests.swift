@@ -427,9 +427,11 @@ class ParserTests: XCTestCase {
         let expectedStatement = InsertStatement(
             Token(kind: .identifier("foo"), location: Location(line: 0, column: 12)),
             [
-                .term(Token(kind: .numeric("42"), location: Location(line: 0, column: 24))),
-                .term(Token(kind: .string("x"), location: Location(line: 0, column: 28))),
-                .term(Token(kind: .boolean("false"), location: Location(line: 0, column: 33))),
+                [
+                    .term(Token(kind: .numeric("42"), location: Location(line: 0, column: 24))),
+                    .term(Token(kind: .string("x"), location: Location(line: 0, column: 28))),
+                    .term(Token(kind: .boolean("false"), location: Location(line: 0, column: 33))),
+                ],
             ]
         )
         XCTAssertEqual(statement, expectedStatement)
