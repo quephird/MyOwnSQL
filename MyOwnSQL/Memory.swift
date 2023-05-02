@@ -145,32 +145,37 @@ class MemoryBackend {
         switch insert.table.kind {
         case .identifier(let tableName):
             if let table = self.tables[tableName] {
-                if insert.items.count < table.columnNames.count {
-                    return .failure(.notEnoughValues)
-                } else if insert.items.count > table.columnNames.count {
-                    return .failure(.tooManyValues)
-                }
+                var rowCount = 0
 
-                var newRow: [MemoryCell] = []
-                for (i, item) in insert.items.enumerated() {
-                    switch item {
-                    case .term(let token):
-                        if let newCell = makeMemoryCell(token) {
-                            if case .null = newCell, !table.columnNullalities[i] {
-                                return .failure(.columnCannotBeNull(table.columnNames[i]))
-                            }
-                            newRow.append(newCell)
-                        } else {
-                            return .failure(.misc("Unable to create cell value from token"))
-                        }
-                    default:
-                        return .failure(.misc("Unable able to handle this kind of expression"))
+                for items in insert.tuples {
+                    if items.count < table.columnNames.count {
+                        return .failure(.notEnoughValues)
+                    } else if items.count > table.columnNames.count {
+                        return .failure(.tooManyValues)
                     }
-                }
 
-                let newRowid = UUID().uuidString
-                table.data[newRowid] = newRow
-                return .successfulInsert(1)
+                    var newRow: [MemoryCell] = []
+                    for (i, item) in items.enumerated() {
+                        switch item {
+                        case .term(let token):
+                            if let newCell = makeMemoryCell(token) {
+                                if case .null = newCell, !table.columnNullalities[i] {
+                                    return .failure(.columnCannotBeNull(table.columnNames[i]))
+                                }
+                                newRow.append(newCell)
+                            } else {
+                                return .failure(.misc("Unable to create cell value from token"))
+                            }
+                        default:
+                            return .failure(.misc("Unable able to handle this kind of expression"))
+                        }
+                    }
+
+                    let newRowid = UUID().uuidString
+                    table.data[newRowid] = newRow
+                    rowCount += 1
+                }
+                return .successfulInsert(rowCount)
             } else {
                 return .failure(.tableDoesNotExist(tableName))
             }

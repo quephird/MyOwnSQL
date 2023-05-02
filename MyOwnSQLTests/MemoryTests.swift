@@ -85,6 +85,54 @@ class MemoryTests: XCTestCase {
         XCTAssertEqual(actualDress, expectedDress)
     }
 
+    func testSuccessfulExecutionOfInsertStatementWithMultipleTuples() throws {
+        // Create the table first...
+        let database = MemoryBackend()
+        let create = "CREATE TABLE exclamations(id INT NOT NULL, remark TEXT NOT NULL);"
+        let _ = database.executeStatements(create)
+
+        // ... and _now_ insert the row from an actual statement...
+        let insert = "INSERT INTO exclamations VALUES(1, 'WHEEEEE!!!'), (2, 'ZOMGGGG'), (3, 'Holy crap, I am doing this!');"
+        let results = database.executeStatements(insert)
+
+        guard let result = results.first else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+        XCTAssertEqual(result, .successfulInsert(3))
+
+        guard let table = database.tables["exclamations"] else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+        let rows = Array(table.data.values)
+        XCTAssertEqual(rows.count, 3)
+
+        let expectedRows: [[MemoryCell]] = [
+            [
+                .intValue(1),
+                .textValue("WHEEEEE!!!"),
+            ],
+            [
+                .intValue(2),
+                .textValue("ZOMGGGG"),
+            ],
+            [
+                .intValue(3),
+                .textValue("Holy crap, I am doing this!"),
+            ],
+        ]
+        let actualRowsSorted = rows.sorted(by: { (row1, row2) -> Bool in
+            switch (row1[0], row2[0]) {
+            case (.intValue(let id1), .intValue(let id2)):
+                return id1 < id2
+            default:
+                return false
+            }
+        })
+        XCTAssertEqual(actualRowsSorted, expectedRows)
+    }
+
     func testInsertFailsForNonexistentTable() throws {
         // Create the table first...
         let database = MemoryBackend()

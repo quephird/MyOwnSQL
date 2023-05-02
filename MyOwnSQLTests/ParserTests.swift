@@ -427,9 +427,42 @@ class ParserTests: XCTestCase {
         let expectedStatement = InsertStatement(
             Token(kind: .identifier("foo"), location: Location(line: 0, column: 12)),
             [
-                .term(Token(kind: .numeric("42"), location: Location(line: 0, column: 24))),
-                .term(Token(kind: .string("x"), location: Location(line: 0, column: 28))),
-                .term(Token(kind: .boolean("false"), location: Location(line: 0, column: 33))),
+                [
+                    .term(Token(kind: .numeric("42"), location: Location(line: 0, column: 24))),
+                    .term(Token(kind: .string("x"), location: Location(line: 0, column: 28))),
+                    .term(Token(kind: .boolean("false"), location: Location(line: 0, column: 33))),
+                ],
+            ]
+        )
+        XCTAssertEqual(statement, expectedStatement)
+    }
+
+    func testParseInsertStatementWithMultipleTuples() throws {
+        let source = "INSERT INTO foo VALUES(1, 'bar'), (2, 'baz'), (3, 'quux')"
+        guard case .success(let tokens) = lex(source) else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
+
+        guard case .success(_, .insert(let statement)) = parseInsertStatement(tokens, 0) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+        let expectedStatement = InsertStatement(
+            Token(kind: .identifier("foo"), location: Location(line: 0, column: 12)),
+            [
+                [
+                    .term(Token(kind: .numeric("1"), location: Location(line: 0, column: 23))),
+                    .term(Token(kind: .string("bar"), location: Location(line: 0, column: 26))),
+                ],
+                [
+                    .term(Token(kind: .numeric("2"), location: Location(line: 0, column: 35))),
+                    .term(Token(kind: .string("baz"), location: Location(line: 0, column: 38))),
+                ],
+                [
+                    .term(Token(kind: .numeric("3"), location: Location(line: 0, column: 47))),
+                    .term(Token(kind: .string("quux"), location: Location(line: 0, column: 50))),
+                ],
             ]
         )
         XCTAssertEqual(statement, expectedStatement)

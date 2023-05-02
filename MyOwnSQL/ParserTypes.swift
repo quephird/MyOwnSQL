@@ -87,11 +87,11 @@ struct SelectStatement: Equatable {
 
 struct InsertStatement: Equatable {
     var table: Token
-    var items: [Expression]
+    var tuples: [[Expression]]
 
-    init(_ table: Token, _ items: [Expression]) {
+    init(_ table: Token, _ tuples: [[Expression]]) {
         self.table = table
-        self.items = items
+        self.tuples = tuples
     }
 }
 
