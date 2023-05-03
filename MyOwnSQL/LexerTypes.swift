@@ -33,6 +33,8 @@ enum Keyword: String, CaseIterable {
     case not = "not"
     case null = "null"
     case `is` = "is"
+    case order = "order"
+    case by = "by"
 }
 
 enum Symbol: String, CaseIterable {

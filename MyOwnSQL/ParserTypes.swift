@@ -68,10 +68,19 @@ struct CreateStatement: Equatable {
     }
 }
 
+struct OrderByClause: Equatable {
+    var items: [Expression]
+
+    init(_ items: [Expression]) {
+        self.items = items
+    }
+}
+
 struct SelectStatement: Equatable {
     var table: Token
     var items: [SelectItem]
     var whereClause: Expression? = nil
+    var orderByClause: OrderByClause? = nil
 
     init(_ table: Token, _ items: [SelectItem]) {
         self.table = table

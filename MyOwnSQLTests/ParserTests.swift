@@ -304,6 +304,33 @@ class ParserTests: XCTestCase {
         XCTAssertEqual(statement, expectedStatement)
     }
 
+    func testSelectWithOrderByClause() throws {
+        let source = "SELECT * FROM dresses ORDER BY description, is_fabulous, id"
+        guard case .success(let tokens) = lex(source) else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
+
+        guard case .success(_, .select(let statement)) = parseSelectStatement(tokens, 0) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+
+        var expectedStatement = SelectStatement(
+            Token(kind: .identifier("dresses"), location: Location(line: 0, column: 14)),
+            [
+                .star
+            ]
+        )
+        expectedStatement.orderByClause = OrderByClause([
+            .term(Token(kind: .identifier("description"), location: Location(line: 0, column: 31))),
+            .term(Token(kind: .identifier("is_fabulous"), location: Location(line: 0, column: 44))),
+            .term(Token(kind: .identifier("id"), location: Location(line: 0, column: 57))),
+        ])
+
+        XCTAssertEqual(statement, expectedStatement)
+    }
+
     func testInvalidSelectStatementsShouldFailToParse() throws {
         for source in [
             "SELECT FROM bar",

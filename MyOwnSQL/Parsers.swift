@@ -261,6 +261,21 @@ func parseSelectStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
     }
     statement.whereClause = whereClause
 
+    if tokenCursorCopy+1 < tokens.count &&
+        .keyword(.order) == tokens[tokenCursorCopy].kind &&
+        .keyword(.by) == tokens[tokenCursorCopy+1].kind {
+        switch parseExpressionList(tokens, tokenCursorCopy+2) {
+        case .failure(let message):
+            return .failure(message)
+        case.success(let newTokenCursor, let orderByItems):
+            let orderByClause = OrderByClause(orderByItems)
+            statement.orderByClause = orderByClause
+            tokenCursorCopy = newTokenCursor
+        default:
+            return .failure("Unexpected error occurred")
+        }
+    }
+
     return .success(tokenCursorCopy, .select(statement))
 }
 
@@ -358,13 +373,12 @@ func parseCreateStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
     return .success(tokenCursorCopy, .create(statement))
 }
 
-// Ee expect each item in the list of insert values to be in the form:
-//
-//     <expression>
-//
-// ... and separated by a comma token. Unlike in parseSelectItems(),
+// This method is now shared with parseSelectStatement(), to produce
+// the ORDER BY clause, and parseInsertStatement(), to produce the
+// the list of insert items. We expect each item in the list of expressions
+// to separated by a comma token. Unlike in parseSelectItems(),
 // aliases are not allowed.
-func parseInsertValues(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<[Expression]> {
+func parseExpressionList(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<[Expression]> {
     var tokenCursorCopy = tokenCursor
     var expressions: [Expression] = []
 
@@ -401,7 +415,7 @@ func parseInsertTuples(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResu
         }
         tokenCursorCopy += 1
 
-        switch parseInsertValues(tokens, tokenCursorCopy) {
+        switch parseExpressionList(tokens, tokenCursorCopy) {
         case .failure(let errorMessage):
             return .failure(errorMessage)
         case .success(let newTokenCursor, let newExpressions):
