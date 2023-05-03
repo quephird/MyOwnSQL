@@ -333,14 +333,14 @@ class ParserTests: XCTestCase {
 
     func testInvalidSelectStatementsShouldFailToParse() throws {
         for source in [
-            "SELECT FROM bar",
-            "SELECT 42 foo",
-            "SELECT 42 FROM",
-            "SELECT 42 'forty-two' FROM foo",
-            "SELECT 42 AS FROM foo",
-            "SELECT * AS everything FROM FOO",
-            "SELECT * FROM foo WHERE",
-            "SELECT * FROM foo ORDER BY",
+            "SELECT FROM bar", // No select items
+            "SELECT 42 foo", // Missing FROM keyword
+            "SELECT 42 FROM", // Missing table name
+            "SELECT 42 'forty-two' FROM foo", // Missing comma between two items
+            "SELECT 42 AS FROM foo", // Missing select item alias
+            "SELECT * AS everything FROM FOO", // Cannot alias the star symbol
+            "SELECT * FROM foo WHERE", // No WHERE expression
+            "SELECT * FROM foo ORDER BY", // No ORDER BY items
         ] {
             guard case .success(let tokens) = lex(source) else {
                 XCTFail("Lexing failed unexpectedly")
