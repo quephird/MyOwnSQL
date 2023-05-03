@@ -340,6 +340,7 @@ class ParserTests: XCTestCase {
             "SELECT 42 AS FROM foo",
             "SELECT * AS everything FROM FOO",
             "SELECT * FROM foo WHERE",
+            "SELECT * FROM foo ORDER BY",
         ] {
             guard case .success(let tokens) = lex(source) else {
                 XCTFail("Lexing failed unexpectedly")
