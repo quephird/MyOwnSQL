@@ -264,7 +264,9 @@ func parseSelectStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
     if tokenCursorCopy+1 < tokens.count &&
         .keyword(.order) == tokens[tokenCursorCopy].kind &&
         .keyword(.by) == tokens[tokenCursorCopy+1].kind {
-        switch parseExpressionList(tokens, tokenCursorCopy+2) {
+        let delimiters: [TokenKind] = [.symbol(.comma), .symbol(.semicolon)]
+
+        switch parseExpressionList(tokens, tokenCursorCopy+2, delimiters) {
         case .failure(let message):
             return .failure(message)
         case.success(let newTokenCursor, let orderByItems):
@@ -375,15 +377,16 @@ func parseCreateStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
 
 // This method is now shared with parseSelectStatement(), to produce
 // the ORDER BY clause, and parseInsertStatement(), to produce the
-// the list of insert items. We expect each item in the list of expressions
+// the list of insert items. Note that we need to pass in the set of
+// delimiting characters now, since they are slightly different between
+// the two contexts. We expect each item in the list of expressions
 // to separated by a comma token. Unlike in parseSelectItems(),
 // aliases are not allowed.
-func parseExpressionList(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<[Expression]> {
+func parseExpressionList(_ tokens: [Token], _ tokenCursor: Int, _ delimiters: [TokenKind]) -> ParseHelperResult<[Expression]> {
     var tokenCursorCopy = tokenCursor
     var expressions: [Expression] = []
 
     while tokenCursorCopy < tokens.count {
-        let delimiters: [TokenKind] = [.symbol(.comma), .symbol(.rightParenthesis)]
         guard case .success(let newTokenCursorCopy, let expression) = parseExpression(tokens, tokenCursorCopy, delimiters, 0) else {
             return .failure("Expression expected but not found")
         }
@@ -415,7 +418,8 @@ func parseInsertTuples(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResu
         }
         tokenCursorCopy += 1
 
-        switch parseExpressionList(tokens, tokenCursorCopy) {
+        let delimiters: [TokenKind] = [.symbol(.comma), .symbol(.rightParenthesis)]
+        switch parseExpressionList(tokens, tokenCursorCopy, delimiters) {
         case .failure(let errorMessage):
             return .failure(errorMessage)
         case .success(let newTokenCursor, let newExpressions):
