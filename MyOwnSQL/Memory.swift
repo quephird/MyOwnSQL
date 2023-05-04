@@ -319,21 +319,24 @@ class MemoryBackend {
 
         if let orderByClause = select.orderByClause {
             let resultSetAndRows = zip(resultRows, tableRows)
+
+            var predicates: [([MemoryCell], [MemoryCell]) -> Bool] = []
+            for itemExpression in orderByClause.items {
+                let predicate = { (tableRow1: [MemoryCell], tableRow2: [MemoryCell]) -> Bool in
+                    let orderByItem1 = evaluateExpression(itemExpression, table, tableRow1)!
+                    let orderByItem2 = evaluateExpression(itemExpression, table, tableRow2)!
+                    return orderByItem1 < orderByItem2
+                }
+                predicates.append(predicate)
+            }
+
             resultRows = resultSetAndRows.sorted(by: { (tuple1, tuple2) -> Bool in
                 let (_, tableRow1) = tuple1
                 let (_, tableRow2) = tuple2
 
-                var predicates: [([MemoryCell], [MemoryCell]) -> Bool] = []
-                for itemExpression in orderByClause.items {
-                    let predicate = { (tableRow1: [MemoryCell], tableRow2: [MemoryCell]) -> Bool in
-                        let orderByItem1 = evaluateExpression(itemExpression, table, tableRow1)!
-                        let orderByItem2 = evaluateExpression(itemExpression, table, tableRow2)!
-                        return orderByItem1 < orderByItem2
-                    }
-                    predicates.append(predicate)
-                }
-
                 for predicate in predicates {
+                    // If the two expressions being compared are equal,
+                    // then we need to continue to the next predicate.
                     if !predicate(tableRow1, tableRow2) && !predicate(tableRow2, tableRow1) {
                         continue
                     }
