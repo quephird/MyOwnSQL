@@ -201,7 +201,6 @@ class MemoryBackend {
 
     func selectTable(_ select: SelectStatement) -> StatementExecutionResult {
         var columns: [Column] = []
-        var resultRows: [[MemoryCell]] = []
 
         guard case .identifier(let tableName) = select.table.kind else {
             return .failure(.misc("Invalid token for table name"))
@@ -235,6 +234,17 @@ class MemoryBackend {
                 }
             }
         }
+
+        if let orderByClause = select.orderByClause {
+            for item in orderByClause.items {
+                if case .failure(let error) = typeCheck(item, table) {
+                    return .failure(error)
+                }
+            }
+        }
+
+        var resultRows: [[MemoryCell]] = []
+        var orderByRows: [[MemoryCell]] = []
 
         var isFirstRow = true
         let tableRows = table.data.values
@@ -315,33 +325,42 @@ class MemoryBackend {
             }
             isFirstRow = false
             resultRows.append(resultRow)
+
+            if let orderByClause = select.orderByClause {
+                var orderByRow: [MemoryCell] = []
+                for itemExpression in orderByClause.items {
+                    guard let orderByItem = evaluateExpression(itemExpression, table, tableRow) else {
+                        return .failure(.misc("Could not evaulate expression in ORDER BY clause"))
+                    }
+                    orderByRow.append(orderByItem)
+                }
+                orderByRows.append(orderByRow)
+            }
         }
 
         if let orderByClause = select.orderByClause {
-            let resultSetAndRows = zip(resultRows, tableRows)
+            let resultSetAndOrderByRows = zip(resultRows, orderByRows)
 
             var predicates: [([MemoryCell], [MemoryCell]) -> Bool] = []
-            for itemExpression in orderByClause.items {
-                let predicate = { (tableRow1: [MemoryCell], tableRow2: [MemoryCell]) -> Bool in
-                    let orderByItem1 = evaluateExpression(itemExpression, table, tableRow1)!
-                    let orderByItem2 = evaluateExpression(itemExpression, table, tableRow2)!
-                    return orderByItem1 < orderByItem2
+            for (i, _) in orderByClause.items.enumerated() {
+                let predicate = { (orderByRow1: [MemoryCell], orderByRow2: [MemoryCell]) -> Bool in
+                    return orderByRow1[i] < orderByRow2[i]
                 }
                 predicates.append(predicate)
             }
 
-            resultRows = resultSetAndRows.sorted(by: { (tuple1, tuple2) -> Bool in
-                let (_, tableRow1) = tuple1
-                let (_, tableRow2) = tuple2
+            resultRows = resultSetAndOrderByRows.sorted(by: { (tuple1, tuple2) -> Bool in
+                let (_, orderByRow1) = tuple1
+                let (_, orderByRow2) = tuple2
 
                 for predicate in predicates {
                     // If the two expressions being compared are equal,
                     // then we need to continue to the next predicate.
-                    if !predicate(tableRow1, tableRow2) && !predicate(tableRow2, tableRow1) {
+                    if !predicate(orderByRow1, orderByRow2) && !predicate(orderByRow2, orderByRow1) {
                         continue
                     }
 
-                    return predicate(tableRow1, tableRow2)
+                    return predicate(orderByRow1, orderByRow2)
                 }
 
                 return false

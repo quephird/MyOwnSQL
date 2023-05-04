@@ -249,7 +249,7 @@ func parseSelectStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
 
     switch parseToken(tokens, tokenCursorCopy, .keyword(.where)) {
     case .success(let newTokenCursor, _):
-        switch parseExpression(tokens, newTokenCursor, [.symbol(.semicolon)], 0) {
+        switch parseExpression(tokens, newTokenCursor, [.symbol(.semicolon), .keyword(.order)], 0) {
         case .success(let newTokenCursor, let expression):
             tokenCursorCopy = newTokenCursor
             whereClause = expression
