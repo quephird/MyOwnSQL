@@ -14,6 +14,21 @@ enum MemoryCell: Equatable {
     case null
 }
 
+extension MemoryCell: Comparable {
+    static func < (lhs: MemoryCell, rhs: MemoryCell) -> Bool {
+        switch(lhs, rhs) {
+        case (.intValue(let int1), .intValue(let int2)):
+            return int1 < int2
+        case (.textValue(let text1), .textValue(let text2)):
+            return text1 < text2
+        case (.booleanValue(let bool1), .booleanValue(let bool2)):
+            return (bool1 ? 1 : 0) < (bool2 ? 1 : 0)
+        default:
+            return false
+        }
+    }
+}
+
 enum ColumnType {
     case int
     case text
@@ -222,7 +237,8 @@ class MemoryBackend {
         }
 
         var isFirstRow = true
-        for tableRow in table.data.values {
+        let tableRows = table.data.values
+        for tableRow in tableRows {
             var resultRow: [MemoryCell] = []
 
             if let whereClause = select.whereClause {
@@ -300,6 +316,37 @@ class MemoryBackend {
             isFirstRow = false
             resultRows.append(resultRow)
         }
+
+        if let orderByClause = select.orderByClause {
+            let resultSetAndRows = zip(resultRows, tableRows)
+            resultRows = resultSetAndRows.sorted(by: { (tuple1, tuple2) -> Bool in
+                let (_, tableRow1) = tuple1
+                let (_, tableRow2) = tuple2
+
+                var predicates: [([MemoryCell], [MemoryCell]) -> Bool] = []
+                for itemExpression in orderByClause.items {
+                    let predicate = { (tableRow1: [MemoryCell], tableRow2: [MemoryCell]) -> Bool in
+                        let orderByItem1 = evaluateExpression(itemExpression, table, tableRow1)!
+                        let orderByItem2 = evaluateExpression(itemExpression, table, tableRow2)!
+                        return orderByItem1 < orderByItem2
+                    }
+                    predicates.append(predicate)
+                }
+
+                for predicate in predicates {
+                    if !predicate(tableRow1, tableRow2) && !predicate(tableRow2, tableRow1) {
+                        continue
+                    }
+
+                    return predicate(tableRow1, tableRow2)
+                }
+
+                return false
+            }).map { (result, _) in
+                return result
+            }
+        }
+
         return .successfulSelect(ResultSet(columns, resultRows))
     }
 
