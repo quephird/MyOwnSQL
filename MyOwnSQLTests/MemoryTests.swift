@@ -557,6 +557,38 @@ INSERT INTO parts VALUES(6, 'Cog', 'Red', 19, 'London');
         XCTAssertEqual(actualIds, expectedIds)
     }
 
+    func testSelectWithOrderByClauseSortsNullsToBottom() throws {
+        let database = MemoryBackend()
+        let setup = """
+CREATE TABLE customers(id INT NOT NULL, name TEXT NOT NULL, email_address TEXT NULL);
+INSERT INTO customers VALUES(1, 'Danielle', 'danielle@danielle.com');
+INSERT INTO customers VALUES(2, 'Becca', NULL);
+INSERT INTO customers VALUES(3, 'Joshu', 'joshu@joshu.com');
+INSERT INTO customers VALUES(4, 'Nic', NULL);
+INSERT INTO customers VALUES(5, 'David', 'david@david.com');
+"""
+        let _ = database.executeStatements(setup)
+
+        let select = "SELECT * FROM customers ORDER BY email_address;"
+        let results = database.executeStatements(select)
+        guard let result = results.first, case .successfulSelect(let resultSet) = result else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+
+        let expectedIds: [MemoryCell] = [
+            .textValue("danielle@danielle.com"),
+            .textValue("david@david.com"),
+            .textValue("joshu@joshu.com"),
+            .null,
+            .null,
+        ]
+        let actualIds = resultSet.rows.map { row in
+            return row[2]
+        }
+        XCTAssertEqual(actualIds, expectedIds)
+    }
+
     func testSelectFailsForBadExpressionInSelectClause() throws {
         let database = MemoryBackend()
         let create = "CREATE TABLE dresses (id int, description text, is_in_season boolean);"

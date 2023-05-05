@@ -23,6 +23,10 @@ extension MemoryCell: Comparable {
             return text1 < text2
         case (.booleanValue(let bool1), .booleanValue(let bool2)):
             return (bool1 ? 1 : 0) < (bool2 ? 1 : 0)
+        case (.null, .intValue), (.null, .textValue), (.null, .booleanValue):
+            return false
+        case (.intValue, .null), (.textValue, .null), (.booleanValue, .null):
+            return true
         default:
             return false
         }
