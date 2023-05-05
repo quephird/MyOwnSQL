@@ -346,9 +346,14 @@ class MemoryBackend {
             let resultSetAndOrderByRows = zip(resultRows, orderByRows)
 
             var predicates: [([MemoryCell], [MemoryCell]) -> Bool] = []
-            for (i, _) in orderByClause.items.enumerated() {
+            for (i, item) in orderByClause.items.enumerated() {
+                var comparator: (MemoryCell, MemoryCell) -> Bool = { $0 < $1 }
+                if let sortOrderToken = item.sortOrder, case .keyword(.desc) = sortOrderToken.kind {
+                    comparator = { $1 < $0 }
+                }
+
                 let predicate = { (orderByRow1: [MemoryCell], orderByRow2: [MemoryCell]) -> Bool in
-                    return orderByRow1[i] < orderByRow2[i]
+                    return comparator(orderByRow1[i], orderByRow2[i])
                 }
                 predicates.append(predicate)
             }

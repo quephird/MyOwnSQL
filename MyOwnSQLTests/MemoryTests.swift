@@ -589,6 +589,82 @@ INSERT INTO customers VALUES(5, 'David', 'david@david.com');
         XCTAssertEqual(actualIds, expectedIds)
     }
 
+    func testSelectWithOrderByClauseWithExplicitDescSort() throws {
+        let database = MemoryBackend()
+        let setup = """
+CREATE TABLE parts(id INT NOT NULL, name TEXT NOT NULL, color TEXT NOT NULL, weight INT NOT NULL, city TEXT NOT NULL);
+INSERT INTO parts VALUES(1, 'Nut', 'Red', 12, 'London');
+INSERT INTO parts VALUES(2, 'Bolt', 'Green', 17, 'Paris');
+INSERT INTO parts VALUES(3, 'Screw', 'Blue', 17, 'Oslo');
+INSERT INTO parts VALUES(4, 'Screw', 'Red', 14, 'London');
+INSERT INTO parts VALUES(5, 'Cam', 'Blue', 12, 'Paris');
+INSERT INTO parts VALUES(6, 'Cog', 'Red', 19, 'London');
+"""
+        let _ = database.executeStatements(setup)
+
+        let select = "SELECT * FROM parts ORDER BY id DESC;"
+        let results = database.executeStatements(select)
+        guard let result = results.first else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+        guard case .successfulSelect(let resultSet) = result else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+
+        let expectedIds: [MemoryCell] = [
+            .intValue(6),
+            .intValue(5),
+            .intValue(4),
+            .intValue(3),
+            .intValue(2),
+            .intValue(1),
+        ]
+        let actualIds = resultSet.rows.map { row in
+            return row[0]
+        }
+        XCTAssertEqual(actualIds, expectedIds)
+    }
+
+    func testSelectWithOrderByClauseDescAndAsc() throws {
+        let database = MemoryBackend()
+        let setup = """
+CREATE TABLE parts(id INT NOT NULL, name TEXT NOT NULL, color TEXT NOT NULL, weight INT NOT NULL, city TEXT NOT NULL);
+INSERT INTO parts VALUES(1, 'Nut', 'Red', 12, 'London');
+INSERT INTO parts VALUES(2, 'Bolt', 'Green', 17, 'Paris');
+INSERT INTO parts VALUES(3, 'Screw', 'Blue', 17, 'Oslo');
+INSERT INTO parts VALUES(4, 'Screw', 'Red', 14, 'London');
+INSERT INTO parts VALUES(5, 'Cam', 'Blue', 12, 'Paris');
+INSERT INTO parts VALUES(6, 'Cog', 'Red', 19, 'London');
+"""
+        let _ = database.executeStatements(setup)
+
+        let select = "SELECT * FROM parts ORDER BY city ASC, name DESC;"
+        let results = database.executeStatements(select)
+        guard let result = results.first else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+        guard case .successfulSelect(let resultSet) = result else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+
+        let expectedIds: [MemoryCell] = [
+            .intValue(4),
+            .intValue(1),
+            .intValue(6),
+            .intValue(3),
+            .intValue(5),
+            .intValue(2),
+        ]
+        let actualIds = resultSet.rows.map { row in
+            return row[0]
+        }
+        XCTAssertEqual(actualIds, expectedIds)
+    }
+
     func testSelectFailsForBadExpressionInSelectClause() throws {
         let database = MemoryBackend()
         let create = "CREATE TABLE dresses (id int, description text, is_in_season boolean);"

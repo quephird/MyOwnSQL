@@ -223,6 +223,8 @@ func parseOrderByItems(_ tokens: [Token], _ tokenCursor: Int, _ delimiters: [Tok
         tokenCursorCopy = newTokenCursorCopy
 
         var item = OrderByItem(expression)
+        // TODO: Think about how to fail if a token other than a
+        //       comma or semicolon is found after expression
         if tokenCursorCopy < tokens.count &&
             (.keyword(.asc) == tokens[tokenCursorCopy].kind || .keyword(.desc) == tokens[tokenCursorCopy].kind) {
             item.sortOrder = tokens[tokenCursorCopy]
