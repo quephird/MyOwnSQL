@@ -241,7 +241,7 @@ class MemoryBackend {
 
         if let orderByClause = select.orderByClause {
             for item in orderByClause.items {
-                if case .failure(let error) = typeCheck(item, table) {
+                if case .failure(let error) = typeCheck(item.expression, table) {
                     return .failure(error)
                 }
             }
@@ -332,11 +332,11 @@ class MemoryBackend {
 
             if let orderByClause = select.orderByClause {
                 var orderByRow: [MemoryCell] = []
-                for itemExpression in orderByClause.items {
-                    guard let orderByItem = evaluateExpression(itemExpression, table, tableRow) else {
+                for item in orderByClause.items {
+                    guard let orderByValue = evaluateExpression(item.expression, table, tableRow) else {
                         return .failure(.misc("Could not evaulate expression in ORDER BY clause"))
                     }
-                    orderByRow.append(orderByItem)
+                    orderByRow.append(orderByValue)
                 }
                 orderByRows.append(orderByRow)
             }

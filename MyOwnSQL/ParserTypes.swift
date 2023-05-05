@@ -68,10 +68,25 @@ struct CreateStatement: Equatable {
     }
 }
 
-struct OrderByClause: Equatable {
-    var items: [Expression]
+enum SortOrder: Equatable {
+    case asc
+    case desc
+}
 
-    init(_ items: [Expression]) {
+struct OrderByItem: Equatable {
+    var expression: Expression
+    var sortOrder: SortOrder
+
+    init(_ expression: Expression, _ sortOrder: SortOrder) {
+        self.expression = expression
+        self.sortOrder = sortOrder
+    }
+}
+
+struct OrderByClause: Equatable {
+    var items: [OrderByItem]
+
+    init(_ items: [OrderByItem]) {
         self.items = items
     }
 }
