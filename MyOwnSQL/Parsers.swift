@@ -216,12 +216,19 @@ func parseOrderByItems(_ tokens: [Token], _ tokenCursor: Int, _ delimiters: [Tok
     var items: [OrderByItem] = []
 
     while tokenCursorCopy < tokens.count {
-        guard case .success(let newTokenCursorCopy, let expression) = parseExpression(tokens, tokenCursorCopy, delimiters, 0) else {
+        let additionalDelimiters: [TokenKind] = [.keyword(.asc), .keyword(.desc)]
+        guard case .success(let newTokenCursorCopy, let expression) = parseExpression(tokens, tokenCursorCopy, delimiters + additionalDelimiters, 0) else {
             return .failure("Expression expected but not found")
         }
-        let item = OrderByItem(expression, .asc)
-        items.append(item)
         tokenCursorCopy = newTokenCursorCopy
+
+        var item = OrderByItem(expression)
+        if tokenCursorCopy < tokens.count &&
+            (.keyword(.asc) == tokens[tokenCursorCopy].kind || .keyword(.desc) == tokens[tokenCursorCopy].kind) {
+            item.sortOrder = tokens[tokenCursorCopy]
+            tokenCursorCopy += 1
+        }
+        items.append(item)
 
         guard tokenCursorCopy < tokens.count, case .symbol(.comma) = tokens[tokenCursorCopy].kind else {
             break
