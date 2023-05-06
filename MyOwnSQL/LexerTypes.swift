@@ -50,6 +50,7 @@ enum Symbol: String, CaseIterable {
     case equals = "="
     case notEquals = "!="
     case concatenate = "||"
+    case dot = "."
 }
 
 enum TokenKind: Hashable, CustomStringConvertible {

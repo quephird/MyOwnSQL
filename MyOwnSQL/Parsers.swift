@@ -119,6 +119,7 @@ outer:
             .symbol(.concatenate),
             .symbol(.plus),
             .symbol(.asterisk),
+            .symbol(.dot)
         ]
 
         var binaryOperator: Token? = nil
