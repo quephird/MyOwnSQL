@@ -134,6 +134,9 @@ class MemoryBackend {
         for column in create.columns {
             switch column.nameToken.kind {
             case .identifier(let name):
+                if columnNames.contains(name) {
+                    return .failure(.duplicateColumn(name))
+                }
                 columnNames.append(name)
             default:
                 return .failure(.misc("Invalid token for column name"))

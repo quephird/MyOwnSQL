@@ -42,6 +42,33 @@ class MemoryTests: XCTestCase {
         XCTAssertEqual(result, .failure(.tableAlreadyExists("dresses")))
     }
 
+    func testCreateFailsForDuplicateColumnName() throws {
+        let database = MemoryBackend()
+        let create = "CREATE TABLE foo(bar INT, baz BOOLEAN, bar TEXT);"
+        let results = database.executeStatements(create)
+
+        guard let result = results.first else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+
+        XCTAssertEqual(result, .failure(.duplicateColumn("bar")))
+    }
+
+    func testCreateStatementWithNullalityQualifiers() throws {
+        let database = MemoryBackend()
+        let firstInput = "CREATE TABLE foo(bar int not null, baz text null, quux boolean);"
+        let _ = database.executeStatements(firstInput)
+
+        guard let newTable = database.tables["foo"] else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+        let expectedNullalities = [false, true, true]
+        let actualNullalities = newTable.columnNullalities
+        XCTAssertEqual(actualNullalities, expectedNullalities)
+    }
+
     func testSuccessfulDropTableStatement() throws {
         let database = MemoryBackend()
         let setup = "CREATE TABLE dresses (id int, description text, is_in_season boolean);"
@@ -67,21 +94,8 @@ class MemoryTests: XCTestCase {
             XCTFail("Something unexpected happened")
             return
         }
+
         XCTAssertEqual(result, .failure(.tableDoesNotExist("dresses")))
-    }
-
-    func testCreateStatementWithNullalityQualifiers() throws {
-        let database = MemoryBackend()
-        let firstInput = "CREATE TABLE foo(bar int not null, baz text null, quux boolean);"
-        let _ = database.executeStatements(firstInput)
-
-        guard let newTable = database.tables["foo"] else {
-            XCTFail("Something unexpected happened")
-            return
-        }
-        let expectedNullalities = [false, true, true]
-        let actualNullalities = newTable.columnNullalities
-        XCTAssertEqual(actualNullalities, expectedNullalities)
     }
 
     func testSuccessfulExecutionOfInsertStatement() throws {
