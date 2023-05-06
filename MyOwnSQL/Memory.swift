@@ -110,6 +110,8 @@ class MemoryBackend {
                     results.append(deleteTable(deleteStatement))
                 case .update(let updateStatement):
                     results.append(updateTable(updateStatement))
+                default:
+                    continue
                 }
             }
         }

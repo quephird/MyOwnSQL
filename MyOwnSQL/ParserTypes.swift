@@ -68,6 +68,14 @@ struct CreateStatement: Equatable {
     }
 }
 
+struct DropTableStatement: Equatable {
+    var table: Token
+
+    init(_ table: Token) {
+        self.table = table
+    }
+}
+
 struct OrderByItem: Equatable {
     var expression: Expression
     var sortOrder: Token?
@@ -161,6 +169,7 @@ struct UpdateStatement: Equatable {
 
 enum Statement {
     case create(CreateStatement)
+    case dropTable(DropTableStatement)
     case insert(InsertStatement)
     case select(SelectStatement)
     case delete(DeleteStatement)
