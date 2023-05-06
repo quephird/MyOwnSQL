@@ -478,6 +478,36 @@ class ParserTests: XCTestCase {
         }
     }
 
+    func testSuccessfulParseOfDropTableStatement() throws {
+        let source = "DROP TABLE foo"
+        guard case .success(let tokens) = lex(source) else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
+
+        guard case .success(_, .dropTable(let statement)) = parseDropTableStatement(tokens, 0) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+        let expectedStatement = DropTableStatement(
+            Token(kind: .identifier("foo"), location: Location(line: 0, column: 11))
+        )
+        XCTAssertEqual(statement, expectedStatement)
+    }
+
+    func testFailedParseOfDropTableStatement() throws {
+        let source = "DROP foo"
+        guard case .success(let tokens) = lex(source) else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
+
+        guard case .failure = parseDropTableStatement(tokens, 0) else {
+            XCTFail("Parsing succeeded unexpectedly")
+            return
+        }
+    }
+
     func testSuccessfulParseOfInsertStatement() throws {
         let source = "INSERT INTO foo VALUES (42, 'x', false)"
         guard case .success(let tokens) = lex(source) else {

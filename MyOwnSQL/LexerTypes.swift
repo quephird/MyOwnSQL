@@ -12,6 +12,7 @@ struct Location: Equatable {
 
 enum Keyword: String, CaseIterable {
     case create = "create"
+    case drop = "drop"
     case insert = "insert"
     case select = "select"
     case delete = "delete"

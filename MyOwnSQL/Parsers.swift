@@ -409,6 +409,32 @@ func parseCreateStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
     return .success(tokenCursorCopy, .create(statement))
 }
 
+// The structure of a DROP TABLE statement is simply:
+//
+//     DROP TABLE <table name>
+func parseDropTableStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<Statement> {
+    var tokenCursorCopy = tokenCursor
+
+    if tokens[tokenCursorCopy].kind != TokenKind.keyword(.drop) {
+        return .noMatch
+    }
+    tokenCursorCopy += 1
+
+    if tokenCursorCopy >= tokens.count || tokens[tokenCursorCopy].kind != TokenKind.keyword(.table) {
+        return .failure("Missing TABLE keyword")
+    }
+    tokenCursorCopy += 1
+
+    guard tokenCursorCopy < tokens.count, case .identifier = tokens[tokenCursorCopy].kind else {
+        return .failure("Missing table name")
+    }
+    let table = tokens[tokenCursorCopy]
+    tokenCursorCopy += 1
+
+    let statement = DropTableStatement(table)
+    return .success(tokenCursorCopy, .dropTable(statement))
+}
+
 func parseInsertItems(_ tokens: [Token], _ tokenCursor: Int, _ delimiters: [TokenKind]) -> ParseHelperResult<[Expression]> {
     var tokenCursorCopy = tokenCursor
     var expressions: [Expression] = []
@@ -649,6 +675,7 @@ func parseUpdateStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
 func parseStatement(_ tokens: [Token], _ cursor: Int) -> ParseHelperResult<Statement> {
     let parseHelpers = [
         parseCreateStatement,
+        parseDropTableStatement,
         parseInsertStatement,
         parseSelectStatement,
         parseDeleteStatement,
