@@ -42,6 +42,34 @@ class MemoryTests: XCTestCase {
         XCTAssertEqual(result, .failure(.tableAlreadyExists("dresses")))
     }
 
+    func testSuccessfulDropTableStatement() throws {
+        let database = MemoryBackend()
+        let setup = "CREATE TABLE dresses (id int, description text, is_in_season boolean);"
+        let _ = database.executeStatements(setup)
+
+        let dropTable = "DROP TABLE dresses;"
+        let results = database.executeStatements(dropTable)
+
+        guard let result = results.first else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+        XCTAssertEqual(result, .successfulDropTable)
+        XCTAssertNil(database.tables["dresses"])
+    }
+
+    func testDropTableFailsForNonExistentTable() throws {
+        let database = MemoryBackend()
+        let dropTable = "DROP TABLE dresses;"
+        let results = database.executeStatements(dropTable)
+
+        guard let result = results.first else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+        XCTAssertEqual(result, .failure(.tableDoesNotExist("dresses")))
+    }
+
     func testCreateStatementWithNullalityQualifiers() throws {
         let database = MemoryBackend()
         let firstInput = "CREATE TABLE foo(bar int not null, baz text null, quux boolean);"

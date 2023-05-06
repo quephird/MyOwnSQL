@@ -25,6 +25,8 @@ while true {
             print(error.errorDescription)
         case .successfulCreateTable:
             print("Table created")
+        case .successfulDropTable:
+            print("Table dropped")
         case .successfulInsert(let rowCount):
             print("\(rowCount) row(s) inserted")
         case .successfulSelect(let resultSet):

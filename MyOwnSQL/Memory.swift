@@ -81,6 +81,7 @@ enum TypeCheckResult {
 
 enum StatementExecutionResult: Equatable {
     case successfulCreateTable
+    case successfulDropTable
     case successfulInsert(Int)
     case successfulSelect(ResultSet)
     case successfulDelete(Int)
@@ -102,6 +103,8 @@ class MemoryBackend {
                 switch statement {
                 case .create(let createStatement):
                     results.append(createTable(createStatement))
+                case .dropTable(let dropTableStatement):
+                    results.append(dropTable(dropTableStatement))
                 case .insert(let insertStatement):
                     results.append(insertTable(insertStatement))
                 case .select(let selectStatement):
@@ -110,8 +113,6 @@ class MemoryBackend {
                     results.append(deleteTable(deleteStatement))
                 case .update(let updateStatement):
                     results.append(updateTable(updateStatement))
-                default:
-                    continue
                 }
             }
         }
@@ -160,6 +161,18 @@ class MemoryBackend {
         let newTable = Table(columnNames, columnTypes, columnNullalities)
         self.tables[tableName] = newTable
         return .successfulCreateTable
+    }
+
+    func dropTable(_ dropTable: DropTableStatement) -> StatementExecutionResult {
+        guard case .identifier(let tableName) = dropTable.table.kind else {
+            return .failure(.misc("Invalid token for table name"))
+        }
+        if self.tables[tableName] == nil {
+            return .failure(.tableDoesNotExist(tableName))
+        }
+
+        self.tables[tableName] = nil
+        return .successfulDropTable
     }
 
     func insertTable(_ insert: InsertStatement) -> StatementExecutionResult {

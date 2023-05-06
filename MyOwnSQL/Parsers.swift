@@ -675,6 +675,7 @@ func parseUpdateStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
 func parseStatement(_ tokens: [Token], _ cursor: Int) -> ParseHelperResult<Statement> {
     let parseHelpers = [
         parseCreateStatement,
+        parseDropTableStatement,
         parseInsertStatement,
         parseSelectStatement,
         parseDeleteStatement,
