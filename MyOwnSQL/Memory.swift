@@ -14,6 +14,25 @@ enum MemoryCell: Equatable {
     case null
 }
 
+extension MemoryCell: Comparable {
+    static func < (lhs: MemoryCell, rhs: MemoryCell) -> Bool {
+        switch(lhs, rhs) {
+        case (.intValue(let int1), .intValue(let int2)):
+            return int1 < int2
+        case (.textValue(let text1), .textValue(let text2)):
+            return text1 < text2
+        case (.booleanValue(let bool1), .booleanValue(let bool2)):
+            return (bool1 ? 1 : 0) < (bool2 ? 1 : 0)
+        case (.null, .intValue), (.null, .textValue), (.null, .booleanValue):
+            return false
+        case (.intValue, .null), (.textValue, .null), (.booleanValue, .null):
+            return true
+        default:
+            return false
+        }
+    }
+}
+
 enum ColumnType {
     case int
     case text
@@ -186,7 +205,6 @@ class MemoryBackend {
 
     func selectTable(_ select: SelectStatement) -> StatementExecutionResult {
         var columns: [Column] = []
-        var resultRows: [[MemoryCell]] = []
 
         guard case .identifier(let tableName) = select.table.kind else {
             return .failure(.misc("Invalid token for table name"))
@@ -221,8 +239,20 @@ class MemoryBackend {
             }
         }
 
+        if let orderByClause = select.orderByClause {
+            for item in orderByClause.items {
+                if case .failure(let error) = typeCheck(item.expression, table) {
+                    return .failure(error)
+                }
+            }
+        }
+
+        var resultRows: [[MemoryCell]] = []
+        var orderByRows: [[MemoryCell]] = []
+
         var isFirstRow = true
-        for tableRow in table.data.values {
+        let tableRows = table.data.values
+        for tableRow in tableRows {
             var resultRow: [MemoryCell] = []
 
             if let whereClause = select.whereClause {
@@ -299,7 +329,55 @@ class MemoryBackend {
             }
             isFirstRow = false
             resultRows.append(resultRow)
+
+            if let orderByClause = select.orderByClause {
+                var orderByRow: [MemoryCell] = []
+                for item in orderByClause.items {
+                    guard let orderByValue = evaluateExpression(item.expression, table, tableRow) else {
+                        return .failure(.misc("Could not evaulate expression in ORDER BY clause"))
+                    }
+                    orderByRow.append(orderByValue)
+                }
+                orderByRows.append(orderByRow)
+            }
         }
+
+        if let orderByClause = select.orderByClause {
+            let resultSetAndOrderByRows = zip(resultRows, orderByRows)
+
+            var predicates: [([MemoryCell], [MemoryCell]) -> Bool] = []
+            for (i, item) in orderByClause.items.enumerated() {
+                var comparator: (MemoryCell, MemoryCell) -> Bool = { $0 < $1 }
+                if let sortOrderToken = item.sortOrder, case .keyword(.desc) = sortOrderToken.kind {
+                    comparator = { $1 < $0 }
+                }
+
+                let predicate = { (orderByRow1: [MemoryCell], orderByRow2: [MemoryCell]) -> Bool in
+                    return comparator(orderByRow1[i], orderByRow2[i])
+                }
+                predicates.append(predicate)
+            }
+
+            resultRows = resultSetAndOrderByRows.sorted(by: { (tuple1, tuple2) -> Bool in
+                let (_, orderByRow1) = tuple1
+                let (_, orderByRow2) = tuple2
+
+                for predicate in predicates {
+                    // If the two expressions being compared are equal,
+                    // then we need to continue to the next predicate.
+                    if !predicate(orderByRow1, orderByRow2) && !predicate(orderByRow2, orderByRow1) {
+                        continue
+                    }
+
+                    return predicate(orderByRow1, orderByRow2)
+                }
+
+                return false
+            }).map { (result, _) in
+                return result
+            }
+        }
+
         return .successfulSelect(ResultSet(columns, resultRows))
     }
 

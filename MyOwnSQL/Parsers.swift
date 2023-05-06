@@ -211,6 +211,40 @@ func parseSelectItems(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResul
     return .success(tokenCursorCopy, items)
 }
 
+func parseOrderByItems(_ tokens: [Token], _ tokenCursor: Int, _ delimiters: [TokenKind]) -> ParseHelperResult<[OrderByItem]> {
+    var tokenCursorCopy = tokenCursor
+    var items: [OrderByItem] = []
+
+    while tokenCursorCopy < tokens.count {
+        let additionalDelimiters: [TokenKind] = [.keyword(.asc), .keyword(.desc)]
+        guard case .success(let newTokenCursorCopy, let expression) = parseExpression(tokens, tokenCursorCopy, delimiters + additionalDelimiters, 0) else {
+            return .failure("Expression expected but not found")
+        }
+        tokenCursorCopy = newTokenCursorCopy
+
+        var item = OrderByItem(expression)
+        // TODO: Think about how to fail if a token other than a
+        //       comma or semicolon is found after expression
+        if tokenCursorCopy < tokens.count &&
+            (.keyword(.asc) == tokens[tokenCursorCopy].kind || .keyword(.desc) == tokens[tokenCursorCopy].kind) {
+            item.sortOrder = tokens[tokenCursorCopy]
+            tokenCursorCopy += 1
+        }
+        items.append(item)
+
+        guard tokenCursorCopy < tokens.count, case .symbol(.comma) = tokens[tokenCursorCopy].kind else {
+            break
+        }
+        tokenCursorCopy += 1
+    }
+
+    if items.isEmpty {
+        return .failure("At least one expression was expected")
+    }
+    return .success(tokenCursorCopy, items)
+}
+
+
 // For now, the structure of a supported SELECT statement is the following:
 //
 //     SELECT <one or more expressions> FROM <table name>
@@ -249,7 +283,7 @@ func parseSelectStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
 
     switch parseToken(tokens, tokenCursorCopy, .keyword(.where)) {
     case .success(let newTokenCursor, _):
-        switch parseExpression(tokens, newTokenCursor, [.symbol(.semicolon)], 0) {
+        switch parseExpression(tokens, newTokenCursor, [.symbol(.semicolon), .keyword(.order)], 0) {
         case .success(let newTokenCursor, let expression):
             tokenCursorCopy = newTokenCursor
             whereClause = expression
@@ -260,6 +294,23 @@ func parseSelectStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
         whereClause = nil
     }
     statement.whereClause = whereClause
+
+    if tokenCursorCopy+1 < tokens.count &&
+        .keyword(.order) == tokens[tokenCursorCopy].kind &&
+        .keyword(.by) == tokens[tokenCursorCopy+1].kind {
+        let delimiters: [TokenKind] = [.symbol(.comma), .symbol(.semicolon)]
+
+        switch parseOrderByItems(tokens, tokenCursorCopy+2, delimiters) {
+        case .failure(let message):
+            return .failure(message)
+        case.success(let newTokenCursor, let orderByItems):
+            let orderByClause = OrderByClause(orderByItems)
+            statement.orderByClause = orderByClause
+            tokenCursorCopy = newTokenCursor
+        default:
+            return .failure("Unexpected error occurred")
+        }
+    }
 
     return .success(tokenCursorCopy, .select(statement))
 }
@@ -358,18 +409,11 @@ func parseCreateStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
     return .success(tokenCursorCopy, .create(statement))
 }
 
-// Ee expect each item in the list of insert values to be in the form:
-//
-//     <expression>
-//
-// ... and separated by a comma token. Unlike in parseSelectItems(),
-// aliases are not allowed.
-func parseInsertValues(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<[Expression]> {
+func parseInsertItems(_ tokens: [Token], _ tokenCursor: Int, _ delimiters: [TokenKind]) -> ParseHelperResult<[Expression]> {
     var tokenCursorCopy = tokenCursor
     var expressions: [Expression] = []
 
     while tokenCursorCopy < tokens.count {
-        let delimiters: [TokenKind] = [.symbol(.comma), .symbol(.rightParenthesis)]
         guard case .success(let newTokenCursorCopy, let expression) = parseExpression(tokens, tokenCursorCopy, delimiters, 0) else {
             return .failure("Expression expected but not found")
         }
@@ -401,7 +445,8 @@ func parseInsertTuples(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResu
         }
         tokenCursorCopy += 1
 
-        switch parseInsertValues(tokens, tokenCursorCopy) {
+        let delimiters: [TokenKind] = [.symbol(.comma), .symbol(.rightParenthesis)]
+        switch parseInsertItems(tokens, tokenCursorCopy, delimiters) {
         case .failure(let errorMessage):
             return .failure(errorMessage)
         case .success(let newTokenCursor, let newExpressions):
