@@ -14,6 +14,7 @@ enum StatementError: Error, Equatable, LocalizedError {
     case columnDoesNotExist(String)
     case whereClauseNotBooleanExpression
     case columnCannotBeNull(String)
+    case duplicateColumn(String)
     case typeMismatch
     case notEnoughValues
     case tooManyValues
@@ -34,6 +35,8 @@ enum StatementError: Error, Equatable, LocalizedError {
             return "WHERE clause must be boolean expression"
         case .columnCannotBeNull(let columnName):
             return "Column \(columnName) cannot be NULL"
+        case .duplicateColumn(let columnName):
+            return "Column \(columnName) specified more than once"
         case .typeMismatch:
             return "Type mismatch in SET clause"
         case .notEnoughValues:
