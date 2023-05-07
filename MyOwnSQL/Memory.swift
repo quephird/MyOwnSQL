@@ -61,12 +61,14 @@ struct ResultSet: Equatable {
 }
 
 class Table {
+    var name: String
     var columnNames: [String]
     var columnTypes: [ColumnType]
     var columnNullalities: [Bool]
     var data: [String : [MemoryCell]]
 
-    init(_ columnNames: [String], _ columnTypes: [ColumnType], _ columnNullalities: [Bool]) {
+    init(_ name: String, _ columnNames: [String], _ columnTypes: [ColumnType], _ columnNullalities: [Bool]) {
+        self.name = name
         self.columnNames = columnNames
         self.columnTypes = columnTypes
         self.columnNullalities = columnNullalities
@@ -161,7 +163,7 @@ class MemoryBackend {
             columnNullalities.append(column.isNullable)
         }
 
-        let newTable = Table(columnNames, columnTypes, columnNullalities)
+        let newTable = Table(tableName, columnNames, columnTypes, columnNullalities)
         self.tables[tableName] = newTable
         return .successfulCreateTable
     }
@@ -223,6 +225,7 @@ class MemoryBackend {
 
     func selectTable(_ select: SelectStatement) -> StatementExecutionResult {
         var columns: [Column] = []
+        var tableAliases: [String: String] = [:]
 
         guard case .identifier(let tableName) = select.table.name.kind else {
             return .failure(.misc("Invalid token for table name"))
@@ -232,14 +235,22 @@ class MemoryBackend {
             return .failure(.tableDoesNotExist(tableName))
         }
 
+        if let alias = select.table.alias {
+            if case .identifier(let aliasName) = alias.kind {
+                tableAliases[aliasName] = tableName
+            } else {
+                return .failure(.misc("Invalid token for table alias"))
+            }
+        }
+
         for item in select.items {
             switch item {
             case .expression(let expression):
-                if case .failure(let error) = typeCheck(expression, table) {
+                if case .failure(let error) = typeCheck(expression, table, tableAliases) {
                     return .failure(error)
                 }
             case .expressionWithAlias(let expression, _):
-                if case .failure(let error) = typeCheck(expression, table) {
+                if case .failure(let error) = typeCheck(expression, table, tableAliases) {
                     return .failure(error)
                 }
             case .star:
@@ -248,7 +259,7 @@ class MemoryBackend {
         }
 
         if let whereClause = select.whereClause {
-            switch typeCheck(whereClause, table) {
+            switch typeCheck(whereClause, table, tableAliases) {
             case .failure(let error):
                 return .failure(error)
             case .success(let type):
@@ -260,7 +271,7 @@ class MemoryBackend {
 
         if let orderByClause = select.orderByClause {
             for item in orderByClause.items {
-                if case .failure(let error) = typeCheck(item.expression, table) {
+                if case .failure(let error) = typeCheck(item.expression, table, tableAliases) {
                     return .failure(error)
                 }
             }
@@ -275,7 +286,7 @@ class MemoryBackend {
             var resultRow: [MemoryCell] = []
 
             if let whereClause = select.whereClause {
-                if case .booleanValue(let keepRow) = evaluateExpression(whereClause, table, tableRow), !keepRow {
+                if case .booleanValue(let keepRow) = evaluateExpression(whereClause, table, tableAliases, tableRow), !keepRow {
                     continue
                 }
             }
@@ -283,7 +294,7 @@ class MemoryBackend {
             for (i, item) in select.items.enumerated() {
                 switch item {
                 case .expression(let expression):
-                    guard let value = evaluateExpression(expression, table, tableRow) else {
+                    guard let value = evaluateExpression(expression, table, tableAliases, tableRow) else {
                         return .failure(.misc("Unable to evaluate expression in SELECT"))
                     }
 
@@ -312,7 +323,7 @@ class MemoryBackend {
 
                     resultRow.append(value)
                 case .expressionWithAlias(let expression, let aliasToken):
-                    guard let value = evaluateExpression(expression, table, tableRow) else {
+                    guard let value = evaluateExpression(expression, table, tableAliases, tableRow) else {
                         return .failure(.misc("Unable to evaulate expression"))
                     }
 
@@ -352,7 +363,7 @@ class MemoryBackend {
             if let orderByClause = select.orderByClause {
                 var orderByRow: [MemoryCell] = []
                 for item in orderByClause.items {
-                    guard let orderByValue = evaluateExpression(item.expression, table, tableRow) else {
+                    guard let orderByValue = evaluateExpression(item.expression, table, tableAliases, tableRow) else {
                         return .failure(.misc("Could not evaulate expression in ORDER BY clause"))
                     }
                     orderByRow.append(orderByValue)
@@ -409,7 +420,7 @@ class MemoryBackend {
         }
 
         if let whereClause = delete.whereClause {
-            switch typeCheck(whereClause, table) {
+            switch typeCheck(whereClause, table, [:]) {
             case .failure(let error):
                 return .failure(error)
             case .success(let type):
@@ -422,7 +433,7 @@ class MemoryBackend {
         var rowids: [String] = []
         for (rowid, tableRow) in table.data {
             if let whereClause = delete.whereClause {
-                if case .booleanValue(let deleteRow) = evaluateExpression(whereClause, table, tableRow), deleteRow {
+                if case .booleanValue(let deleteRow) = evaluateExpression(whereClause, table, [:], tableRow), deleteRow {
                     rowids.append(rowid)
                 }
                 continue
@@ -447,7 +458,7 @@ class MemoryBackend {
         }
 
         if let whereClause = update.whereClause {
-            switch typeCheck(whereClause, table) {
+            switch typeCheck(whereClause, table, [:]) {
             case .failure(let error):
                 return .failure(error)
             case .success(let type):
@@ -462,7 +473,7 @@ class MemoryBackend {
                 return .failure(.misc("Invalid token for column name"))
             }
             if let columnIndex = table.columnNames.firstIndex(of: columnName) {
-                switch typeCheck(columnAssignment.expression, table) {
+                switch typeCheck(columnAssignment.expression, table, [:]) {
                 case .failure(let error):
                     return .failure(error)
                 case .success(let expressionType):
@@ -484,7 +495,7 @@ class MemoryBackend {
         for rowId in table.data.keys {
             var tableRow = table.data[rowId]!
             if let whereClause = update.whereClause {
-                if case .booleanValue(let updateRow) = evaluateExpression(whereClause, table, tableRow), !updateRow {
+                if case .booleanValue(let updateRow) = evaluateExpression(whereClause, table, [:], tableRow), !updateRow {
                     continue
                 }
             }
@@ -492,7 +503,7 @@ class MemoryBackend {
             for columnAssignment in update.columnAssignments {
                 for (i, columnName) in table.columnNames.enumerated() {
                     if case .identifier(let requestedColumnName) = columnAssignment.column.kind, columnName == requestedColumnName {
-                        guard let value = evaluateExpression(columnAssignment.expression, table, tableRow) else {
+                        guard let value = evaluateExpression(columnAssignment.expression, table, [:], tableRow) else {
                             return .failure(.invalidExpression)
                         }
                         tableRow[i] = value
@@ -506,7 +517,7 @@ class MemoryBackend {
         return .successfulUpdate(rowCount)
     }
 
-    func typeCheck(_ expression: Expression, _ table: Table) -> TypeCheckResult {
+    func typeCheck(_ expression: Expression, _ table: Table, _ tableAliases: [String: String]) -> TypeCheckResult {
         switch expression {
         case .term(let token):
             switch token.kind {
@@ -547,8 +558,37 @@ class MemoryBackend {
                 return .failure(StatementError.invalidExpression)
             }
         case .binary(let leftExpr, let rightExpr, let operatorToken):
+            if case .symbol(.dot) = operatorToken.kind {
+                if case .term(let tableAliasToken) = leftExpr, case .term(let columnNameToken) = rightExpr {
+                    if case .identifier(let tableAlias) = tableAliasToken.kind {
+                        if let tableName = tableAliases[tableAlias] {
+                            if tableName == table.name {
+                                if case .identifier(let requestedColumnName) = columnNameToken.kind {
+                                    for (i, columnName) in table.columnNames.enumerated() {
+                                        if requestedColumnName == columnName {
+                                            return .success(table.columnTypes[i])
+                                        }
+                                    }
+                                    return .failure(StatementError.columnDoesNotExist(requestedColumnName))
+                                } else {
+                                    return .failure(.misc("Invalid token"))
+                                }
+                            } else {
+                                return .failure(.tableDoesNotExist(tableName))
+                            }
+                        } else {
+                            return .failure(.misc("Invalid table alias"))
+                        }
+                    } else {
+                        return .failure(.misc("Invalid token"))
+                    }
+                } else {
+                    return .failure(.invalidExpression)
+                }
+            }
+
             var leftType: ColumnType
-            switch typeCheck(leftExpr, table) {
+            switch typeCheck(leftExpr, table, tableAliases) {
             case .failure(let error):
                 return .failure(error)
             case .success(let type):
@@ -556,7 +596,7 @@ class MemoryBackend {
             }
 
             var rightType: ColumnType
-            switch typeCheck(rightExpr, table) {
+            switch typeCheck(rightExpr, table, tableAliases) {
             case .failure(let error):
                 return .failure(error)
             case .success(let type):
@@ -600,7 +640,7 @@ class MemoryBackend {
     }
 }
 
-func evaluateExpression(_ expr: Expression, _ table: Table, _ tableRow: [MemoryCell]) -> MemoryCell? {
+func evaluateExpression(_ expr: Expression, _ table: Table, _ tableAliases: [String: String], _ tableRow: [MemoryCell]) -> MemoryCell? {
     switch expr {
     case .term(let token):
         switch token.kind {
@@ -640,7 +680,7 @@ func evaluateExpression(_ expr: Expression, _ table: Table, _ tableRow: [MemoryC
             case .keyword(.is) = tokens[0].kind,
             case .keyword(.not) = tokens[1].kind,
             case .keyword(.null) = tokens[2].kind {
-            guard let subexpressionValue = evaluateExpression(subexpression, table, tableRow) else {
+            guard let subexpressionValue = evaluateExpression(subexpression, table, tableAliases, tableRow) else {
                 return nil
             }
 
@@ -653,7 +693,7 @@ func evaluateExpression(_ expr: Expression, _ table: Table, _ tableRow: [MemoryC
         } else if tokens.count == 2,
             case .keyword(.is) = tokens[0].kind,
             case .keyword(.null) = tokens[1].kind {
-            guard let subexpressionValue = evaluateExpression(subexpression, table, tableRow) else {
+            guard let subexpressionValue = evaluateExpression(subexpression, table, tableAliases, tableRow) else {
                 return nil
             }
 
@@ -666,12 +706,28 @@ func evaluateExpression(_ expr: Expression, _ table: Table, _ tableRow: [MemoryC
         } else {
             return nil
         }
-    case .binary(let leftExpr, let rightExpr, let operatorToken):
-        guard let leftValue = evaluateExpression(leftExpr, table, tableRow) else {
+
+    case .binary(let leftExpr, let rightExpr, let operatorToken) where operatorToken.kind == .symbol(.dot):
+        guard
+            case .term(let tableAliasToken) = leftExpr,
+            case .term(let columnNameToken) = rightExpr,
+            case .identifier(let tableAlias) = tableAliasToken.kind,
+            let tableName = tableAliases[tableAlias],
+            tableName == table.name,
+            case .identifier(let requestedColumnName) = columnNameToken.kind,
+            let i = table.columnNames.firstIndex(of: requestedColumnName)
+        else {
             return nil
         }
 
-        guard let rightValue = evaluateExpression(rightExpr, table, tableRow) else {
+        return tableRow[i]
+
+    case .binary(let leftExpr, let rightExpr, let operatorToken):
+        guard let leftValue = evaluateExpression(leftExpr, table, tableAliases, tableRow) else {
+            return nil
+        }
+
+        guard let rightValue = evaluateExpression(rightExpr, table, tableAliases, tableRow) else {
             return nil
         }
 
