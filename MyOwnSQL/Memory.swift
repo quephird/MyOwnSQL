@@ -224,9 +224,10 @@ class MemoryBackend {
     func selectTable(_ select: SelectStatement) -> StatementExecutionResult {
         var columns: [Column] = []
 
-        guard case .identifier(let tableName) = select.table.kind else {
+        guard case .identifier(let tableName) = select.table.name.kind else {
             return .failure(.misc("Invalid token for table name"))
         }
+
         guard let table = self.tables[tableName] else {
             return .failure(.tableDoesNotExist(tableName))
         }

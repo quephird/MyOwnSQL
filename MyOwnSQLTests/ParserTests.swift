@@ -157,7 +157,7 @@ class ParserTests: XCTestCase {
             return
         }
         let expectedStatement = SelectStatement(
-            Token(kind: .identifier("bar"), location: Location(line: 0, column: 31)),
+            SelectedTable(Token(kind: .identifier("bar"), location: Location(line: 0, column: 31))),
             [
                 .expression(.term(Token(kind: .numeric("42"), location: Location(line: 0, column: 7)))),
                 .expression(.term(Token(kind: .string("x"), location: Location(line: 0, column: 11)))),
@@ -180,7 +180,7 @@ class ParserTests: XCTestCase {
             return
         }
         let expectedStatement = SelectStatement(
-            Token(kind: .identifier("the_universe"), location: Location(line: 0, column: 69)),
+            SelectedTable(Token(kind: .identifier("the_universe"), location: Location(line: 0, column: 69))),
             [
                 .expressionWithAlias(
                     .term(Token(kind: .string("What is the meaning?"), location: Location(line: 0, column: 7))),
@@ -205,7 +205,7 @@ class ParserTests: XCTestCase {
             return
         }
         let expectedStatement = SelectStatement(
-            Token(kind: .identifier("some_table"), location: Location(line: 0, column: 14)),
+            SelectedTable(Token(kind: .identifier("some_table"), location: Location(line: 0, column: 14))),
             [
                 .star
             ]
@@ -225,7 +225,7 @@ class ParserTests: XCTestCase {
             return
         }
         let expectedStatement = SelectStatement(
-            Token(kind: .identifier("bar"), location: Location(line: 0, column: 16)),
+            SelectedTable(Token(kind: .identifier("bar"), location: Location(line: 0, column: 16))),
             [
                 .expression(.term(Token(kind: .identifier("foo"), location: Location(line: 0, column: 7))))
             ],
@@ -251,7 +251,7 @@ class ParserTests: XCTestCase {
         }
 
         let expectedStatement = SelectStatement(
-            Token(kind: .identifier("bar"), location: Location(line: 0, column: 16)),
+            SelectedTable(Token(kind: .identifier("bar"), location: Location(line: 0, column: 16))),
             [
                 .expression(.term(Token(kind: .identifier("foo"), location: Location(line: 0, column: 7))))
             ],
@@ -280,7 +280,7 @@ class ParserTests: XCTestCase {
         }
 
         let expectedStatement = SelectStatement(
-            Token(kind: .identifier("bar"), location: Location(line: 0, column: 16)),
+            SelectedTable(Token(kind: .identifier("bar"), location: Location(line: 0, column: 16))),
             [
                 .expression(.term(Token(kind: .identifier("foo"), location: Location(line: 0, column: 7))))
             ],
@@ -317,7 +317,7 @@ class ParserTests: XCTestCase {
         }
 
         var expectedStatement = SelectStatement(
-            Token(kind: .identifier("dresses"), location: Location(line: 0, column: 14)),
+            SelectedTable(Token(kind: .identifier("dresses"), location: Location(line: 0, column: 14))),
             [
                 .star
             ]
@@ -349,7 +349,7 @@ class ParserTests: XCTestCase {
         }
 
         var expectedStatement = SelectStatement(
-            Token(kind: .identifier("dresses"), location: Location(line: 0, column: 14)),
+            SelectedTable(Token(kind: .identifier("dresses"), location: Location(line: 0, column: 14))),
             [
                 .star
             ]
@@ -364,6 +364,81 @@ class ParserTests: XCTestCase {
                 Token(kind: .keyword(.desc), location: Location(line: 0, column: 51))
             ),
         ])
+
+        XCTAssertEqual(statement, expectedStatement)
+    }
+
+    func testSelectWithTableAliasing() throws {
+        let source = "SELECT d.id, d.description FROM dresses d"
+        guard case .success(let tokens) = lex(source) else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
+        guard case .success(_, .select(let statement)) = parseSelectStatement(tokens, 0) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+
+        let expectedStatement = SelectStatement(
+            SelectedTable(
+                Token(kind: .identifier("dresses"), location: Location(line: 0, column: 32)),
+                Token(kind: .identifier("d"), location: Location(line: 0, column: 40))
+            ),
+            [
+                .expression(
+                    .binary(
+                        .term(Token(kind: .identifier("d"), location: Location(line: 0, column: 7))),
+                        .term(Token(kind: .identifier("id"), location: Location(line: 0, column: 9))),
+                        Token(kind: .symbol(.dot), location: Location(line: 0, column: 8))
+                    )
+                ),
+                .expression(
+                    .binary(
+                        .term(Token(kind: .identifier("d"), location: Location(line: 0, column: 13))),
+                        .term(Token(kind: .identifier("description"), location: Location(line: 0, column: 15))),
+                        Token(kind: .symbol(.dot), location: Location(line: 0, column: 14))
+                    )
+                ),
+            ]
+        )
+
+        XCTAssertEqual(statement, expectedStatement)
+    }
+
+    func testSelectWithComplexExpressionInvolvingAliasing() throws {
+        let source = "SELECT f.bar + f.baz FROM foo f"
+        guard case .success(let tokens) = lex(source) else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
+        guard case .success(_, .select(let statement)) = parseSelectStatement(tokens, 0) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+
+        let expectedStatement = SelectStatement(
+            SelectedTable(
+                Token(kind: .identifier("foo"), location: Location(line: 0, column: 26)),
+                Token(kind: .identifier("f"), location: Location(line: 0, column: 30))
+            ),
+            [
+                .expression(
+                    .binary(
+                        .binary(
+                            .term(Token(kind: .identifier("f"), location: Location(line: 0, column: 7))),
+                            .term(Token(kind: .identifier("bar"), location: Location(line: 0, column: 9))),
+                            Token(kind: .symbol(.dot), location: Location(line: 0, column: 8))
+                        ),
+                        .binary(
+                            .term(Token(kind: .identifier("f"), location: Location(line: 0, column: 15))),
+                            .term(Token(kind: .identifier("baz"), location: Location(line: 0, column: 17))),
+                            Token(kind: .symbol(.dot), location: Location(line: 0, column: 16))
+                        ),
+                        Token(kind: .symbol(.plus), location: Location(line: 0, column: 13))
+                    )
+                ),
+            ]
+        )
 
         XCTAssertEqual(statement, expectedStatement)
     }

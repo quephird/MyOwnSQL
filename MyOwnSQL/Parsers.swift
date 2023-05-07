@@ -274,12 +274,18 @@ func parseSelectStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
     }
     tokenCursorCopy += 1
 
+    var table: SelectedTable
     guard tokenCursorCopy < tokens.count, case .identifier = tokens[tokenCursorCopy].kind else {
         return .failure("Missing table name")
     }
-    let table = tokens[tokenCursorCopy]
+    let tableName = tokens[tokenCursorCopy]
+    table = SelectedTable(tableName)
     tokenCursorCopy += 1
 
+    if tokenCursorCopy < tokens.count, case .identifier = tokens[tokenCursorCopy].kind {
+        table.alias = tokens[tokenCursorCopy]
+        tokenCursorCopy += 1
+    }
     var statement = SelectStatement(table, items)
 
     switch parseToken(tokens, tokenCursorCopy, .keyword(.where)) {
@@ -749,6 +755,8 @@ func bindingPower(_ token: Token) -> Int {
             return 4
         case .asterisk:
             return 5
+        case .dot:
+            return 6
         default:
             return 0
         }
