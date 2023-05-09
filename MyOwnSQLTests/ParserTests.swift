@@ -443,6 +443,84 @@ class ParserTests: XCTestCase {
         XCTAssertEqual(statement, expectedStatement)
     }
 
+    func testSelectWithMultipleCrossJoins() throws {
+        let source = "SELECT * FROM parts CROSS JOIN supplier_parts CROSS JOIN parts"
+        guard case .success(let tokens) = lex(source) else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
+        guard case .success(_, .select(let statement)) = parseSelectStatement(tokens, 0) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+
+        var expectedStatement = SelectStatement(
+            SelectedTable(
+                Token(kind: .identifier("parts"), location: Location(line: 0, column: 14))
+            ),
+            [
+                .star
+            ]
+        )
+        let expectedJoins = [
+            Join(
+                table: SelectedTable(Token(kind: .identifier("supplier_parts"), location: Location(line: 0, column: 31)))
+            ),
+            Join(
+                table: SelectedTable(Token(kind: .identifier("parts"), location: Location(line: 0, column: 57)))
+            ),
+        ]
+        expectedStatement.joins = expectedJoins
+
+        XCTAssertEqual(statement, expectedStatement)
+    }
+
+    func testSelectWithCrossJoinAndWhereClause() throws {
+        let source = "SELECT * FROM supplier_parts sp CROSS JOIN parts p WHERE p.id = sp.part_id"
+        guard case .success(let tokens) = lex(source) else {
+            XCTFail("Lexing failed unexpectedly")
+            return
+        }
+        guard case .success(_, .select(let statement)) = parseSelectStatement(tokens, 0) else {
+            XCTFail("Parsing failed unexpectedly")
+            return
+        }
+
+        var expectedStatement = SelectStatement(
+            SelectedTable(
+                Token(kind: .identifier("supplier_parts"), location: Location(line: 0, column: 14)),
+                Token(kind: .identifier("sp"), location: Location(line: 0, column: 29))
+            ),
+            [
+                .star
+            ],
+            .binary(
+                .binary(
+                    .term(Token(kind: .identifier("p"), location: Location(line: 0, column: 57))),
+                    .term(Token(kind: .identifier("id"), location: Location(line: 0, column: 59))),
+                    Token(kind: .symbol(.dot), location: Location(line: 0, column: 58))
+                ),
+                .binary(
+                    .term(Token(kind: .identifier("sp"), location: Location(line: 0, column: 64))),
+                    .term(Token(kind: .identifier("part_id"), location: Location(line: 0, column: 67))),
+                    Token(kind: .symbol(.dot), location: Location(line: 0, column: 66))
+                ),
+                Token(kind: .symbol(.equals), location: Location(line: 0, column: 62))
+            )
+        )
+        let expectedJoins = [
+            Join(
+                table: SelectedTable(
+                    Token(kind: .identifier("parts"), location: Location(line: 0, column: 43)),
+                    Token(kind: .identifier("p"), location: Location(line: 0, column: 49))
+                )
+            ),
+        ]
+        expectedStatement.joins = expectedJoins
+
+        XCTAssertEqual(statement, expectedStatement)
+    }
+
     func testInvalidSelectStatementsShouldFailToParse() throws {
         for source in [
             "SELECT FROM bar", // No select items

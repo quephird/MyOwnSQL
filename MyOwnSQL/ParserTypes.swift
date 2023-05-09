@@ -112,9 +112,15 @@ struct SelectedTable: Equatable {
     }
 }
 
+struct Join: Equatable {
+    var table: SelectedTable
+    var conditions: Expression?
+}
+
 struct SelectStatement: Equatable {
     var table: SelectedTable
     var items: [SelectItem]
+    var joins: [Join] = []
     var whereClause: Expression? = nil
     var orderByClause: OrderByClause? = nil
 

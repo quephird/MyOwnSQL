@@ -212,6 +212,44 @@ func parseSelectItems(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResul
     return .success(tokenCursorCopy, items)
 }
 
+// For the time being, only CROSS JOINs are supported
+func parseJoins(_ tokens: [Token], _ tokenCursor: Int, _ delimeters: [TokenKind]) -> ParseHelperResult<[Join]> {
+    var tokenCursorCopy = tokenCursor
+    var joins: [Join] = []
+
+    while tokenCursorCopy < tokens.count {
+        guard
+            tokenCursorCopy+1 < tokens.count,
+            case .keyword(.cross) = tokens[tokenCursorCopy].kind,
+            case .keyword(.join) = tokens[tokenCursorCopy+1].kind
+        else {
+            break
+        }
+        tokenCursorCopy += 2
+
+        guard
+            tokenCursorCopy < tokens.count,
+            case .identifier = tokens[tokenCursorCopy].kind
+        else {
+            return .failure("Missing table name")
+        }
+
+        let tableName = tokens[tokenCursorCopy]
+        var table = SelectedTable(tableName)
+        tokenCursorCopy += 1
+
+        if tokenCursorCopy < tokens.count, case .identifier = tokens[tokenCursorCopy].kind {
+            table.alias = tokens[tokenCursorCopy]
+            tokenCursorCopy += 1
+        }
+
+        let newJoin = Join(table: table)
+        joins.append(newJoin)
+    }
+
+    return .success(tokenCursorCopy, joins)
+}
+
 func parseOrderByItems(_ tokens: [Token], _ tokenCursor: Int, _ delimiters: [TokenKind]) -> ParseHelperResult<[OrderByItem]> {
     var tokenCursorCopy = tokenCursor
     var items: [OrderByItem] = []
@@ -287,6 +325,16 @@ func parseSelectStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
         tokenCursorCopy += 1
     }
     var statement = SelectStatement(table, items)
+
+    switch parseJoins(tokens, tokenCursorCopy, []) {
+    case .failure(let message):
+        return .failure(message)
+    case .success(let newTokenCursor, let joins):
+        statement.joins = joins
+        tokenCursorCopy = newTokenCursor
+    default:
+        return .failure("Unexpected error occurred")
+    }
 
     switch parseToken(tokens, tokenCursorCopy, .keyword(.where)) {
     case .success(let newTokenCursor, _):
