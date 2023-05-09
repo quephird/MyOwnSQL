@@ -15,6 +15,7 @@ enum StatementError: Error, Equatable, LocalizedError {
     case whereClauseNotBooleanExpression
     case columnCannotBeNull(String)
     case duplicateColumn(String)
+    case columnAmbiguouslyDefined(String)
     case typeMismatch
     case notEnoughValues
     case tooManyValues
@@ -37,6 +38,8 @@ enum StatementError: Error, Equatable, LocalizedError {
             return "Column \(columnName) cannot be NULL"
         case .duplicateColumn(let columnName):
             return "Column \(columnName) specified more than once"
+        case .columnAmbiguouslyDefined(let columnName):
+            return "Column \(columnName) ambiguously defined"
         case .typeMismatch:
             return "Type mismatch in SET clause"
         case .notEnoughValues:
