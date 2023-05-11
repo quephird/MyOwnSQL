@@ -337,15 +337,28 @@ class MemoryBackend {
                     }
 
                     if isFirstRow {
-                        if case .term(let token) = expression, case .identifier(let requestedColumnName) = token.kind {
-                            // TODO: Need to fix this
-                            columns.append(Column(requestedColumnName, .text))
-//                            for (i, columnName) in table.columnNames.enumerated() {
-//                                if requestedColumnName == columnName {
-//                                    columns.append(Column(columnName, table.columnTypes[i]))
-//                                    break
-//                                }
-//                            }
+                        if case .term(let token) = expression,
+                           case .identifier(let requestedColumnName) = token.kind {
+                            for table in self.tables.values {
+                                for (i, columnName) in table.columnNames.enumerated() {
+                                    if requestedColumnName == columnName {
+                                        columns.append(Column(columnName, table.columnTypes[i]))
+                                        break
+                                    }
+                                }
+                            }
+                        } else if
+                            case .binary(let leftExpr, let rightExpr, let operatorToken) = expression,
+                            case .symbol(.dot) = operatorToken.kind,
+                            case .term(let aliasToken) = leftExpr,
+                            case .identifier(let tableAlias) = aliasToken.kind,
+                            case .term(let columnNameToken) = rightExpr,
+                            case .identifier(let columnName) = columnNameToken.kind,
+                            let tableName = tableAliases[tableAlias],
+                            let table = self.tables[tableName],
+                            let columnIndex = table.columnNames.firstIndex(of: columnName) {
+                            let newColumn = Column(columnName, table.columnTypes[columnIndex])
+                            columns.append(newColumn)
                         } else {
                             switch value {
                             case .intValue:
