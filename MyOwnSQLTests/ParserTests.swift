@@ -531,6 +531,7 @@ class ParserTests: XCTestCase {
             "SELECT * AS everything FROM FOO", // Cannot alias the star symbol
             "SELECT * FROM foo WHERE", // No WHERE expression
             "SELECT * FROM foo ORDER BY", // No ORDER BY items
+            "SELECT * FROM foo CROSS bar", // Missing JOIN keyword
         ] {
             guard case .success(let tokens) = lex(source) else {
                 XCTFail("Lexing failed unexpectedly")

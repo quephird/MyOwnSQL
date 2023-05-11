@@ -218,14 +218,16 @@ func parseJoins(_ tokens: [Token], _ tokenCursor: Int, _ delimeters: [TokenKind]
     var joins: [Join] = []
 
     while tokenCursorCopy < tokens.count {
-        guard
-            tokenCursorCopy+1 < tokens.count,
-            case .keyword(.cross) = tokens[tokenCursorCopy].kind,
-            case .keyword(.join) = tokens[tokenCursorCopy+1].kind
-        else {
+        if tokenCursorCopy+1 < tokens.count,
+           case .keyword(.cross) = tokens[tokenCursorCopy].kind {
+            if case .keyword(.join) = tokens[tokenCursorCopy+1].kind {
+                tokenCursorCopy += 2
+            } else {
+                return .failure("Unexpected token encountered")
+            }
+        } else {
             break
         }
-        tokenCursorCopy += 2
 
         guard
             tokenCursorCopy < tokens.count,
