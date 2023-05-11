@@ -814,7 +814,6 @@ INSERT INTO parts VALUES(6, 'Cog', 'Red', 19, 'London');
         XCTAssertEqual(result, .failure(.columnDoesNotExist("is_velvet")))
     }
 
-
     func testDeleteAllRows() throws {
         let database = MemoryBackend()
         let create = "CREATE TABLE clothes (id int, description text, is_fabulous boolean);"

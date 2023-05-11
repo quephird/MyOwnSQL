@@ -295,23 +295,25 @@ class MemoryBackend {
             }
         }
 
-        // TODO: Whoops... I need to make sure that I can emit rows
-        //       when there are no join tables.
         var product: [[[MemoryCell]]] = []
         var tempProduct = drivingTable.data.values.map { row in
             [row]
         }
-        for joinTable in joinTables {
-            product = []
-            for row in tempProduct {
-                for otherRow in joinTable.data.values {
-                    var tempRow = row
-                    tempRow.append(otherRow)
-                    // TODO: If tempRow satisfies join conditions then...
-                    product.append(tempRow)
+        if joinTables.count > 0 {
+            for joinTable in joinTables {
+                product = []
+                for row in tempProduct {
+                    for otherRow in joinTable.data.values {
+                        var tempRow = row
+                        tempRow.append(otherRow)
+                        // TODO: If tempRow satisfies join conditions then...
+                        product.append(tempRow)
+                    }
                 }
+                tempProduct = product
             }
-            tempProduct = product
+        } else {
+            product = tempProduct
         }
 
         var resultRows: [[MemoryCell]] = []
@@ -588,7 +590,6 @@ class MemoryBackend {
                 }
 
                 for table in tables {
-                    let i = table.columnNames.firstIndex(of: requestedColumnName)
                     for (i, columnName) in table.columnNames.enumerated() {
                         if requestedColumnName == columnName {
                             return .success(table.columnTypes[i])
