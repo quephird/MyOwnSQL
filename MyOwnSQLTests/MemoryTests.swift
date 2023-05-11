@@ -669,6 +669,83 @@ INSERT INTO parts VALUES(6, 'Cog', 'Red', 19, 'London');
         XCTAssertEqual(actualIds, expectedIds)
     }
 
+    func testSelectCrossJoin() throws {
+        let database = MemoryBackend()
+        let setup = """
+CREATE TABLE tops(id INT NOT NULL, description TEXT NOT NULL);
+INSERT INTO tops VALUES(1, 'Purple velvet blouse');
+INSERT INTO tops VALUES(2, 'Silver silk blouse');
+INSERT INTO tops VALUES(3, 'Patterned reef suit');
+CREATE TABLE bottoms(id INT NOT NULL, description TEXT NOT NULL);
+INSERT INTO bottoms VALUES(1, 'Black velvet skirt');
+INSERT INTO bottoms VALUES(2, 'Blue shiny leggings');
+"""
+        let _ = database.executeStatements(setup)
+
+        let select = """
+SELECT t.description, b.description
+FROM tops t
+CROSS JOIN bottoms b
+ORDER BY t.description, b.description;
+"""
+        let results = database.executeStatements(select)
+        guard let result = results.first else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+        guard case .successfulSelect(let resultSet) = result else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+
+        let expectedRows: [[MemoryCell]] = [
+            [.textValue("Patterned reef suit"), .textValue("Black velvet skirt")],
+            [.textValue("Patterned reef suit"), .textValue("Blue shiny leggings")],
+            [.textValue("Purple velvet blouse"), .textValue("Black velvet skirt")],
+            [.textValue("Purple velvet blouse"), .textValue("Blue shiny leggings")],
+            [.textValue("Silver silk blouse"), .textValue("Black velvet skirt")],
+            [.textValue("Silver silk blouse"), .textValue("Blue shiny leggings")],
+        ]
+        XCTAssertEqual(resultSet.rows, expectedRows)
+    }
+
+    func testSelectCrossJoinWithWhereClause() throws {
+        let database = MemoryBackend()
+        let setup = """
+CREATE TABLE tops(id INT NOT NULL, description TEXT NOT NULL);
+INSERT INTO tops VALUES(1, 'Purple velvet blouse');
+INSERT INTO tops VALUES(2, 'Silver silk blouse');
+INSERT INTO tops VALUES(3, 'Patterned reef suit');
+CREATE TABLE bottoms(id INT NOT NULL, description TEXT NOT NULL);
+INSERT INTO bottoms VALUES(1, 'Black velvet skirt');
+INSERT INTO bottoms VALUES(2, 'Blue shiny leggings');
+"""
+        let _ = database.executeStatements(setup)
+
+        let select = """
+SELECT t.description, b.description
+FROM tops t
+CROSS JOIN bottoms b
+WHERE t.id = b.id
+ORDER BY t.id;
+"""
+        let results = database.executeStatements(select)
+        guard let result = results.first else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+        guard case .successfulSelect(let resultSet) = result else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+
+        let expectedRows: [[MemoryCell]] = [
+            [.textValue("Purple velvet blouse"), .textValue("Black velvet skirt")],
+            [.textValue("Silver silk blouse"), .textValue("Blue shiny leggings")],
+        ]
+        XCTAssertEqual(resultSet.rows, expectedRows)
+    }
+
     func testSelectWithOrderByClauseDescAndAsc() throws {
         let database = MemoryBackend()
         let setup = """
