@@ -119,7 +119,7 @@ class MemoryTests: XCTestCase {
         XCTAssertEqual(dresses.count, 1)
 
         let actualDress = dresses[0]
-        let expectedDress: [MemoryCell] = [
+        let expectedDress: TableRow = [
             .intValue(1),
             .textValue("Long black velvet gown from Lauren"),
             .booleanValue(true)
@@ -150,7 +150,7 @@ class MemoryTests: XCTestCase {
         let rows = Array(table.data.values)
         XCTAssertEqual(rows.count, 3)
 
-        let expectedRows: [[MemoryCell]] = [
+        let expectedRows: [TableRow] = [
             [
                 .intValue(1),
                 .textValue("WHEEEEE!!!"),
@@ -267,7 +267,7 @@ class MemoryTests: XCTestCase {
         XCTAssertEqual(actualColumnNames, expectedColumnNames)
 
         XCTAssertEqual(resultSet.rows.count, 1)
-        let expectedRow: [MemoryCell] = [
+        let expectedRow: TableRow = [
             .intValue(42),
             .textValue("something"),
             .booleanValue(false)
@@ -302,7 +302,7 @@ class MemoryTests: XCTestCase {
         XCTAssertEqual(actualColumnNames, expectedColumnNames)
 
         XCTAssertEqual(resultSet.rows.count, 1)
-        let expectedRow: [MemoryCell] = [
+        let expectedRow: TableRow = [
             .intValue(1),
             .textValue("Velvet dress"),
             .booleanValue(true)
@@ -339,7 +339,7 @@ class MemoryTests: XCTestCase {
         XCTAssertEqual(actualColumnNames, expectedColumnNames)
 
         XCTAssertEqual(resultSet.rows.count, 1)
-        let expectedRow: [MemoryCell] = [
+        let expectedRow: TableRow = [
             .intValue(1),
             .textValue("Long black velvet gown from Lauren"),
         ]
@@ -367,7 +367,7 @@ class MemoryTests: XCTestCase {
         }
 
         XCTAssertEqual(resultSet.rows.count, 1)
-        let expectedRow: [MemoryCell] = [
+        let expectedRow: TableRow = [
             .intValue(1),
             .textValue("Long black velvet gown from Lauren"),
             .null
@@ -410,7 +410,7 @@ class MemoryTests: XCTestCase {
             }
 
             XCTAssertEqual(resultSet.rows.count, 1)
-            let expectedRow: [MemoryCell] = [
+            let expectedRow: TableRow = [
                 expectedValue
             ]
             let actualRow = resultSet.rows[0]
@@ -443,7 +443,7 @@ class MemoryTests: XCTestCase {
         }
 
         XCTAssertEqual(resultSet.rows.count, 1)
-        let expectedRow: [MemoryCell] = [
+        let expectedRow: TableRow = [
             .intValue(2),
             .textValue("Linen shirt"),
             .null,
@@ -698,7 +698,7 @@ ORDER BY t.description, b.description;
             return
         }
 
-        let expectedRows: [[MemoryCell]] = [
+        let expectedRows: [TableRow] = [
             [.textValue("Patterned reef suit"), .textValue("Black velvet skirt")],
             [.textValue("Patterned reef suit"), .textValue("Blue shiny leggings")],
             [.textValue("Purple velvet blouse"), .textValue("Black velvet skirt")],
@@ -739,7 +739,7 @@ ORDER BY t.id;
             return
         }
 
-        let expectedRows: [[MemoryCell]] = [
+        let expectedRows: [TableRow] = [
             [.textValue("Purple velvet blouse"), .textValue("Black velvet skirt")],
             [.textValue("Silver silk blouse"), .textValue("Blue shiny leggings")],
         ]
@@ -969,7 +969,7 @@ INSERT INTO parts VALUES(6, 'Cog', 'Red', 19, 'London');
             XCTFail("Something unexpected happened")
             return
         }
-        let expectedRow: [MemoryCell] = [
+        let expectedRow: TableRow = [
             .intValue(1),
             .textValue("Long black velvet gown from Lauren"),
             .booleanValue(true)
@@ -1085,7 +1085,7 @@ INSERT INTO parts VALUES(6, 'Cog', 'Red', 19, 'London');
         }
 
         XCTAssertEqual(resultSet.rows.count, 1)
-        let expectedRow: [MemoryCell] = [
+        let expectedRow: TableRow = [
             .null,
         ]
         let actualRow = resultSet.rows[0]

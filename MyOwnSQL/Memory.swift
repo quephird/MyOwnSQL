@@ -14,6 +14,8 @@ enum MemoryCell: Equatable {
     case null
 }
 
+typealias TableRow = [MemoryCell]
+
 extension MemoryCell: Comparable {
     static func < (lhs: MemoryCell, rhs: MemoryCell) -> Bool {
         switch(lhs, rhs) {
@@ -52,9 +54,9 @@ struct Column: Equatable {
 
 struct ResultSet: Equatable {
     var columns: [Column]
-    var rows: [[MemoryCell]]
+    var rows: [TableRow]
 
-    init(_ columns: [Column], _ rows: [[MemoryCell]]) {
+    init(_ columns: [Column], _ rows: [TableRow]) {
         self.columns = columns
         self.rows = rows
     }
@@ -65,7 +67,7 @@ class Table {
     var columnNames: [String]
     var columnTypes: [ColumnType]
     var columnNullalities: [Bool]
-    var data: [String : [MemoryCell]]
+    var data: [String : TableRow]
 
     init(_ name: String, _ columnNames: [String], _ columnTypes: [ColumnType], _ columnNullalities: [Bool]) {
         self.name = name
@@ -193,7 +195,7 @@ class MemoryBackend {
                         return .failure(.tooManyValues)
                     }
 
-                    var newRow: [MemoryCell] = []
+                    var newRow: TableRow = []
                     for (i, item) in items.enumerated() {
                         switch item {
                         case .term(let token):
@@ -295,7 +297,7 @@ class MemoryBackend {
             }
         }
 
-        var product: [[[MemoryCell]]] = []
+        var product: [[TableRow]] = []
         var tempProduct = drivingTable.data.values.map { row in
             [row]
         }
@@ -306,7 +308,6 @@ class MemoryBackend {
                     for otherRow in joinTable.data.values {
                         var tempRow = row
                         tempRow.append(otherRow)
-                        // TODO: If tempRow satisfies join conditions then...
                         product.append(tempRow)
                     }
                 }
@@ -316,12 +317,12 @@ class MemoryBackend {
             product = tempProduct
         }
 
-        var resultRows: [[MemoryCell]] = []
-        var orderByRows: [[MemoryCell]] = []
+        var resultRows: [TableRow] = []
+        var orderByRows: [TableRow] = []
 
         var isFirstRow = true
         for tableRows in product {
-            var resultRow: [MemoryCell] = []
+            var resultRow: TableRow = []
 
             if let whereClause = select.whereClause {
                 if case .booleanValue(let keepRow) = evaluateExpression(whereClause, allTables, tableAliases, tableRows), !keepRow {
@@ -399,6 +400,7 @@ class MemoryBackend {
                     }
 
                     resultRow.append(value)
+                // Need to think about how to handle alias.*
                 case .star:
                     if isFirstRow {
                         for table in allTables {
@@ -418,7 +420,7 @@ class MemoryBackend {
             resultRows.append(resultRow)
 
             if let orderByClause = select.orderByClause {
-                var orderByRow: [MemoryCell] = []
+                var orderByRow: TableRow = []
                 for item in orderByClause.items {
                     guard let orderByValue = evaluateExpression(item.expression, allTables, tableAliases, tableRows) else {
                         return .failure(.misc("Could not evaulate expression in ORDER BY clause"))
@@ -432,14 +434,14 @@ class MemoryBackend {
         if let orderByClause = select.orderByClause {
             let resultSetAndOrderByRows = zip(resultRows, orderByRows)
 
-            var predicates: [([MemoryCell], [MemoryCell]) -> Bool] = []
+            var predicates: [(TableRow, TableRow) -> Bool] = []
             for (i, item) in orderByClause.items.enumerated() {
                 var comparator: (MemoryCell, MemoryCell) -> Bool = { $0 < $1 }
                 if let sortOrderToken = item.sortOrder, case .keyword(.desc) = sortOrderToken.kind {
                     comparator = { $1 < $0 }
                 }
 
-                let predicate = { (orderByRow1: [MemoryCell], orderByRow2: [MemoryCell]) -> Bool in
+                let predicate = { (orderByRow1: TableRow, orderByRow2: TableRow) -> Bool in
                     return comparator(orderByRow1[i], orderByRow2[i])
                 }
                 predicates.append(predicate)
@@ -719,7 +721,7 @@ class MemoryBackend {
     }
 }
 
-func evaluateExpression(_ expr: Expression, _ tables: [Table], _ tableAliases: [String: String], _ tableRows: [[MemoryCell]]) -> MemoryCell? {
+func evaluateExpression(_ expr: Expression, _ tables: [Table], _ tableAliases: [String: String], _ tableRows: [TableRow]) -> MemoryCell? {
     switch expr {
     case .term(let token):
         switch token.kind {
