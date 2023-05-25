@@ -10,9 +10,14 @@
 //       if the next token matches the expected one
 
 enum ParseHelperResult<T> {
-    case noMatch
     case failure(String)
     case success(Int, T)
+}
+
+enum ParseStatementResult {
+    case noMatch
+    case failure(String)
+    case success(Int, Statement)
 }
 
 func parseToken(_ tokens: [Token], _ tokenCursor: Int, _ tokenKind: TokenKind) -> ParseHelperResult<Token> {
@@ -25,7 +30,7 @@ func parseToken(_ tokens: [Token], _ tokenCursor: Int, _ tokenKind: TokenKind) -
         return .success(tokenCursor+1, currentToken)
     }
 
-    return .noMatch
+    return .failure("Token not found")
 }
 
 func parseTermExpression(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<Expression> {
@@ -289,7 +294,7 @@ func parseOrderByItems(_ tokens: [Token], _ tokenCursor: Int, _ delimiters: [Tok
 // For now, the structure of a supported SELECT statement is the following:
 //
 //     SELECT <one or more expressions> FROM <table name>
-func parseSelectStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<Statement> {
+func parseSelectStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseStatementResult {
     var tokenCursorCopy = tokenCursor
     var items: [SelectItem]
     var whereClause: Expression?
@@ -305,8 +310,6 @@ func parseSelectStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
         items = newItems
     case .failure(let errorMessage):
         return .failure(errorMessage)
-    default:
-        return .failure("Unexpected error occurred")
     }
 
     if tokenCursorCopy >= tokens.count || tokens[tokenCursorCopy].kind != TokenKind.keyword(.from) {
@@ -334,8 +337,6 @@ func parseSelectStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
     case .success(let newTokenCursor, let joins):
         statement.joins = joins
         tokenCursorCopy = newTokenCursor
-    default:
-        return .failure("Unexpected error occurred")
     }
 
     switch parseToken(tokens, tokenCursorCopy, .keyword(.where)) {
@@ -364,8 +365,6 @@ func parseSelectStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
             let orderByClause = OrderByClause(orderByItems)
             statement.orderByClause = orderByClause
             tokenCursorCopy = newTokenCursor
-        default:
-            return .failure("Unexpected error occurred")
         }
     }
 
@@ -422,7 +421,7 @@ func parseColumns(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<[D
 // For now, the structure of a supported CREATE TABLE statement is the following:
 //
 //     CREATE TABLE <table name> (<one or more column definitions>)
-func parseCreateStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<Statement> {
+func parseCreateStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseStatementResult {
     var tokenCursorCopy = tokenCursor
     var columns: [Definition]
 
@@ -453,8 +452,6 @@ func parseCreateStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
     case .success(let newTokenCursor, let newColumns):
         tokenCursorCopy = newTokenCursor
         columns = newColumns
-    default:
-        return .failure("Unexpected error occurred")
     }
 
     if tokenCursorCopy >= tokens.count || tokens[tokenCursorCopy].kind != TokenKind.symbol(.rightParenthesis) {
@@ -469,7 +466,7 @@ func parseCreateStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
 // The structure of a DROP TABLE statement is simply:
 //
 //     DROP TABLE <table name>
-func parseDropTableStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<Statement> {
+func parseDropTableStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseStatementResult {
     var tokenCursorCopy = tokenCursor
 
     if tokens[tokenCursorCopy].kind != TokenKind.keyword(.drop) {
@@ -535,8 +532,6 @@ func parseInsertTuples(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResu
         case .success(let newTokenCursor, let newExpressions):
             tokenCursorCopy = newTokenCursor
             tuples.append(newExpressions)
-        default:
-            return .failure("Unexpected error occurred")
         }
 
         if tokenCursorCopy >= tokens.count || tokens[tokenCursorCopy].kind != TokenKind.symbol(.rightParenthesis) {
@@ -558,7 +553,7 @@ func parseInsertTuples(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResu
 // For now, the structure of a supported INSERT statement is the following:
 //
 //     INSERT INTO <table name> VALUES <one or more tuples of expressions>
-func parseInsertStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<Statement> {
+func parseInsertStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseStatementResult {
     var tokenCursorCopy = tokenCursor
 
     if tokens[tokenCursorCopy].kind != TokenKind.keyword(.insert) {
@@ -589,8 +584,6 @@ func parseInsertStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
         tuples = parsedTuples
     case .failure(let message):
         return .failure(message)
-    default:
-        return .failure("Unexpected error occurred")
     }
 
     let statement = InsertStatement(table, tuples)
@@ -600,7 +593,7 @@ func parseInsertStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
 // The structure of a supported DELETE statement is the following:
 //
 //     DELETE FROM <table name> <optional WHERE clause>
-func parseDeleteStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<Statement> {
+func parseDeleteStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseStatementResult {
     var tokenCursorCopy = tokenCursor
     var whereClause: Expression?
 
@@ -680,7 +673,7 @@ func parseColumnAssignments(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelpe
 // The structure of a supported UPDATE statement is the following:
 //
 //     UPDATE <table name> SET <one or more column assignments separated by a comma> <optional WHERE clause>
-func parseUpdateStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResult<Statement> {
+func parseUpdateStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseStatementResult {
     var tokenCursorCopy = tokenCursor
     var whereClause: Expression?
 
@@ -707,8 +700,6 @@ func parseUpdateStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
     case .success(let newTokenCursor, let newColumnAssignments):
         tokenCursorCopy = newTokenCursor
         columnAssignments = newColumnAssignments
-    default:
-        return .failure("Unexpected error occurred")
     }
     var statement = UpdateStatement(table, columnAssignments)
 
@@ -729,7 +720,7 @@ func parseUpdateStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
     return .success(tokenCursorCopy, .update(statement))
 }
 
-func parseStatement(_ tokens: [Token], _ cursor: Int) -> ParseHelperResult<Statement> {
+func parseStatement(_ tokens: [Token], _ cursor: Int) -> ParseStatementResult {
     let parseHelpers = [
         parseCreateStatement,
         parseDropTableStatement,
