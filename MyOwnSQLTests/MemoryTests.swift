@@ -119,7 +119,7 @@ class MemoryTests: XCTestCase {
         XCTAssertEqual(dresses.count, 1)
 
         let actualDress = dresses[0]
-        let expectedDress: [MemoryCell] = [
+        let expectedDress: TableRow = [
             .intValue(1),
             .textValue("Long black velvet gown from Lauren"),
             .booleanValue(true)
@@ -150,7 +150,7 @@ class MemoryTests: XCTestCase {
         let rows = Array(table.data.values)
         XCTAssertEqual(rows.count, 3)
 
-        let expectedRows: [[MemoryCell]] = [
+        let expectedRows: [TableRow] = [
             [
                 .intValue(1),
                 .textValue("WHEEEEE!!!"),
@@ -267,7 +267,7 @@ class MemoryTests: XCTestCase {
         XCTAssertEqual(actualColumnNames, expectedColumnNames)
 
         XCTAssertEqual(resultSet.rows.count, 1)
-        let expectedRow: [MemoryCell] = [
+        let expectedRow: TableRow = [
             .intValue(42),
             .textValue("something"),
             .booleanValue(false)
@@ -302,7 +302,7 @@ class MemoryTests: XCTestCase {
         XCTAssertEqual(actualColumnNames, expectedColumnNames)
 
         XCTAssertEqual(resultSet.rows.count, 1)
-        let expectedRow: [MemoryCell] = [
+        let expectedRow: TableRow = [
             .intValue(1),
             .textValue("Velvet dress"),
             .booleanValue(true)
@@ -339,7 +339,7 @@ class MemoryTests: XCTestCase {
         XCTAssertEqual(actualColumnNames, expectedColumnNames)
 
         XCTAssertEqual(resultSet.rows.count, 1)
-        let expectedRow: [MemoryCell] = [
+        let expectedRow: TableRow = [
             .intValue(1),
             .textValue("Long black velvet gown from Lauren"),
         ]
@@ -367,7 +367,7 @@ class MemoryTests: XCTestCase {
         }
 
         XCTAssertEqual(resultSet.rows.count, 1)
-        let expectedRow: [MemoryCell] = [
+        let expectedRow: TableRow = [
             .intValue(1),
             .textValue("Long black velvet gown from Lauren"),
             .null
@@ -410,7 +410,7 @@ class MemoryTests: XCTestCase {
             }
 
             XCTAssertEqual(resultSet.rows.count, 1)
-            let expectedRow: [MemoryCell] = [
+            let expectedRow: TableRow = [
                 expectedValue
             ]
             let actualRow = resultSet.rows[0]
@@ -443,7 +443,7 @@ class MemoryTests: XCTestCase {
         }
 
         XCTAssertEqual(resultSet.rows.count, 1)
-        let expectedRow: [MemoryCell] = [
+        let expectedRow: TableRow = [
             .intValue(2),
             .textValue("Linen shirt"),
             .null,
@@ -669,6 +669,83 @@ INSERT INTO parts VALUES(6, 'Cog', 'Red', 19, 'London');
         XCTAssertEqual(actualIds, expectedIds)
     }
 
+    func testSelectCrossJoin() throws {
+        let database = MemoryBackend()
+        let setup = """
+CREATE TABLE tops(id INT NOT NULL, description TEXT NOT NULL);
+INSERT INTO tops VALUES(1, 'Purple velvet blouse');
+INSERT INTO tops VALUES(2, 'Silver silk blouse');
+INSERT INTO tops VALUES(3, 'Patterned reef suit');
+CREATE TABLE bottoms(id INT NOT NULL, description TEXT NOT NULL);
+INSERT INTO bottoms VALUES(1, 'Black velvet skirt');
+INSERT INTO bottoms VALUES(2, 'Blue shiny leggings');
+"""
+        let _ = database.executeStatements(setup)
+
+        let select = """
+SELECT t.description, b.description
+FROM tops t
+CROSS JOIN bottoms b
+ORDER BY t.description, b.description;
+"""
+        let results = database.executeStatements(select)
+        guard let result = results.first else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+        guard case .successfulSelect(let resultSet) = result else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+
+        let expectedRows: [TableRow] = [
+            [.textValue("Patterned reef suit"), .textValue("Black velvet skirt")],
+            [.textValue("Patterned reef suit"), .textValue("Blue shiny leggings")],
+            [.textValue("Purple velvet blouse"), .textValue("Black velvet skirt")],
+            [.textValue("Purple velvet blouse"), .textValue("Blue shiny leggings")],
+            [.textValue("Silver silk blouse"), .textValue("Black velvet skirt")],
+            [.textValue("Silver silk blouse"), .textValue("Blue shiny leggings")],
+        ]
+        XCTAssertEqual(resultSet.rows, expectedRows)
+    }
+
+    func testSelectCrossJoinWithWhereClause() throws {
+        let database = MemoryBackend()
+        let setup = """
+CREATE TABLE tops(id INT NOT NULL, description TEXT NOT NULL);
+INSERT INTO tops VALUES(1, 'Purple velvet blouse');
+INSERT INTO tops VALUES(2, 'Silver silk blouse');
+INSERT INTO tops VALUES(3, 'Patterned reef suit');
+CREATE TABLE bottoms(id INT NOT NULL, description TEXT NOT NULL);
+INSERT INTO bottoms VALUES(1, 'Black velvet skirt');
+INSERT INTO bottoms VALUES(2, 'Blue shiny leggings');
+"""
+        let _ = database.executeStatements(setup)
+
+        let select = """
+SELECT t.description, b.description
+FROM tops t
+CROSS JOIN bottoms b
+WHERE t.id = b.id
+ORDER BY t.id;
+"""
+        let results = database.executeStatements(select)
+        guard let result = results.first else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+        guard case .successfulSelect(let resultSet) = result else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+
+        let expectedRows: [TableRow] = [
+            [.textValue("Purple velvet blouse"), .textValue("Black velvet skirt")],
+            [.textValue("Silver silk blouse"), .textValue("Blue shiny leggings")],
+        ]
+        XCTAssertEqual(resultSet.rows, expectedRows)
+    }
+
     func testSelectWithOrderByClauseDescAndAsc() throws {
         let database = MemoryBackend()
         let setup = """
@@ -814,7 +891,6 @@ INSERT INTO parts VALUES(6, 'Cog', 'Red', 19, 'London');
         XCTAssertEqual(result, .failure(.columnDoesNotExist("is_velvet")))
     }
 
-
     func testDeleteAllRows() throws {
         let database = MemoryBackend()
         let create = "CREATE TABLE clothes (id int, description text, is_fabulous boolean);"
@@ -893,7 +969,7 @@ INSERT INTO parts VALUES(6, 'Cog', 'Red', 19, 'London');
             XCTFail("Something unexpected happened")
             return
         }
-        let expectedRow: [MemoryCell] = [
+        let expectedRow: TableRow = [
             .intValue(1),
             .textValue("Long black velvet gown from Lauren"),
             .booleanValue(true)
@@ -1009,7 +1085,7 @@ INSERT INTO parts VALUES(6, 'Cog', 'Red', 19, 'London');
         }
 
         XCTAssertEqual(resultSet.rows.count, 1)
-        let expectedRow: [MemoryCell] = [
+        let expectedRow: TableRow = [
             .null,
         ]
         let actualRow = resultSet.rows[0]

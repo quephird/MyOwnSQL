@@ -119,6 +119,7 @@ outer:
             .symbol(.concatenate),
             .symbol(.plus),
             .symbol(.asterisk),
+            .symbol(.dot)
         ]
 
         var binaryOperator: Token? = nil
@@ -211,6 +212,46 @@ func parseSelectItems(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResul
     return .success(tokenCursorCopy, items)
 }
 
+// For the time being, only CROSS JOINs are supported
+func parseJoins(_ tokens: [Token], _ tokenCursor: Int, _ delimeters: [TokenKind]) -> ParseHelperResult<[Join]> {
+    var tokenCursorCopy = tokenCursor
+    var joins: [Join] = []
+
+    while tokenCursorCopy < tokens.count {
+        if tokenCursorCopy+1 < tokens.count,
+           case .keyword(.cross) = tokens[tokenCursorCopy].kind {
+            if case .keyword(.join) = tokens[tokenCursorCopy+1].kind {
+                tokenCursorCopy += 2
+            } else {
+                return .failure("Unexpected token encountered")
+            }
+        } else {
+            break
+        }
+
+        guard
+            tokenCursorCopy < tokens.count,
+            case .identifier = tokens[tokenCursorCopy].kind
+        else {
+            return .failure("Missing table name")
+        }
+
+        let tableName = tokens[tokenCursorCopy]
+        var table = SelectedTable(tableName)
+        tokenCursorCopy += 1
+
+        if tokenCursorCopy < tokens.count, case .identifier = tokens[tokenCursorCopy].kind {
+            table.alias = tokens[tokenCursorCopy]
+            tokenCursorCopy += 1
+        }
+
+        let newJoin = Join(table: table)
+        joins.append(newJoin)
+    }
+
+    return .success(tokenCursorCopy, joins)
+}
+
 func parseOrderByItems(_ tokens: [Token], _ tokenCursor: Int, _ delimiters: [TokenKind]) -> ParseHelperResult<[OrderByItem]> {
     var tokenCursorCopy = tokenCursor
     var items: [OrderByItem] = []
@@ -273,13 +314,29 @@ func parseSelectStatement(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperR
     }
     tokenCursorCopy += 1
 
+    var table: SelectedTable
     guard tokenCursorCopy < tokens.count, case .identifier = tokens[tokenCursorCopy].kind else {
         return .failure("Missing table name")
     }
-    let table = tokens[tokenCursorCopy]
+    let tableName = tokens[tokenCursorCopy]
+    table = SelectedTable(tableName)
     tokenCursorCopy += 1
 
+    if tokenCursorCopy < tokens.count, case .identifier = tokens[tokenCursorCopy].kind {
+        table.alias = tokens[tokenCursorCopy]
+        tokenCursorCopy += 1
+    }
     var statement = SelectStatement(table, items)
+
+    switch parseJoins(tokens, tokenCursorCopy, []) {
+    case .failure(let message):
+        return .failure(message)
+    case .success(let newTokenCursor, let joins):
+        statement.joins = joins
+        tokenCursorCopy = newTokenCursor
+    default:
+        return .failure("Unexpected error occurred")
+    }
 
     switch parseToken(tokens, tokenCursorCopy, .keyword(.where)) {
     case .success(let newTokenCursor, _):
@@ -748,6 +805,8 @@ func bindingPower(_ token: Token) -> Int {
             return 4
         case .asterisk:
             return 5
+        case .dot:
+            return 6
         default:
             return 0
         }

@@ -38,6 +38,8 @@ enum Keyword: String, CaseIterable {
     case by = "by"
     case asc = "asc"
     case desc = "desc"
+    case cross = "cross"
+    case join = "join"
 }
 
 enum Symbol: String, CaseIterable {
@@ -50,6 +52,7 @@ enum Symbol: String, CaseIterable {
     case equals = "="
     case notEquals = "!="
     case concatenate = "||"
+    case dot = "."
 }
 
 enum TokenKind: Hashable, CustomStringConvertible {
