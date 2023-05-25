@@ -297,6 +297,7 @@ class MemoryBackend {
             }
         }
 
+        // TODO: Need to revisit this; it gets the job done but is messy
         var product: [[TableRow]] = []
         var tempProduct = drivingTable.data.values.map { row in
             [row]
