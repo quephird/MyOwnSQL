@@ -282,8 +282,6 @@ class MemoryBackend {
             }
         }
 
-        // TODO: Do we really need to type check here or just check
-        //       to see if we have a valid expression for each select item?
         for item in select.items {
             switch item {
             case .expression(let expression):
@@ -350,6 +348,10 @@ class MemoryBackend {
             for (i, item) in select.items.enumerated() {
                 switch item {
                 case .expression(let expression):
+                    // NOTA BENE: We first check if we're dealing with a top-level
+                    //            star expression, and if so, we bypass the standard
+                    //            call to evaluateExpression() because it only returns
+                    //            a scalar value, not an array of them.
                     if case .term(let token) = expression,
                        case .symbol(.asterisk) = token.kind {
                         if isFirstRow {

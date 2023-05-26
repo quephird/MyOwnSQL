@@ -11,6 +11,29 @@ indirect enum Expression: Equatable {
     case binary(Expression, Expression, Token)
 }
 
+extension Expression {
+    var isTopLevelStarExpression: Bool {
+        switch self {
+        case .term(let token):
+            if case .symbol(.asterisk) = token.kind {
+                return true
+            }
+        case .binary(let leftExpr, let rightExpr, let operatorToken):
+            if case .term(let aliasToken) = leftExpr,
+               case .identifier = aliasToken.kind,
+               case .term(let asteriskToken) = rightExpr,
+               case .symbol(.asterisk) = asteriskToken.kind,
+               case .symbol(.dot) = operatorToken.kind {
+                return true
+            }
+        default:
+            return false
+        }
+
+        return false
+    }
+}
+
 enum SelectItem: Equatable {
     case expression(Expression)
     case expressionWithAlias(Expression, Token)

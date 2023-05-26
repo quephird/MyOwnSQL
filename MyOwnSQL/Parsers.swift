@@ -182,29 +182,25 @@ func parseSelectItems(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResul
     var items: [SelectItem] = []
 
     while tokenCursorCopy < tokens.count {
-//        if case .symbol(.asterisk) = tokens[tokenCursorCopy].kind {
-//            items.append(.star)
-//            tokenCursorCopy += 1
-//        } else {
-            let delimiters: [TokenKind] = [.keyword(.from), .keyword(.as), .symbol(.comma)]
-            guard case .success(let newTokenCursorCopy, let expression) = parseExpression(tokens, tokenCursorCopy, delimiters, 0) else {
-                return .failure("Expression expected but not found")
-            }
-            tokenCursorCopy = newTokenCursorCopy
+        let delimiters: [TokenKind] = [.keyword(.from), .keyword(.as), .symbol(.comma)]
+        guard case .success(let newTokenCursorCopy, let expression) = parseExpression(tokens, tokenCursorCopy, delimiters, 0) else {
+            return .failure("Expression expected but not found")
+        }
+        tokenCursorCopy = newTokenCursorCopy
 
         // TODO: Need to check if previously consumed token was an asterisk
-            if case .keyword(.as) = tokens[tokenCursorCopy].kind {
-                tokenCursorCopy += 1
+        if case .keyword(.as) = tokens[tokenCursorCopy].kind,
+           !expression.isTopLevelStarExpression {
+            tokenCursorCopy += 1
 
-                guard case .identifier = tokens[tokenCursorCopy].kind else {
-                    return .failure("Identifier expected after AS keyword")
-                }
-                items.append(.expressionWithAlias(expression, tokens[tokenCursorCopy]))
-                tokenCursorCopy += 1
-            } else {
-                items.append(.expression(expression))
+            guard case .identifier = tokens[tokenCursorCopy].kind else {
+                return .failure("Identifier expected after AS keyword")
             }
-//        }
+            items.append(.expressionWithAlias(expression, tokens[tokenCursorCopy]))
+            tokenCursorCopy += 1
+        } else {
+            items.append(.expression(expression))
+        }
 
         guard tokenCursorCopy < tokens.count, case .symbol(.comma) = tokens[tokenCursorCopy].kind else {
             break
