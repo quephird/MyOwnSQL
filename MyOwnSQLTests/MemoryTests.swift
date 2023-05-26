@@ -746,6 +746,44 @@ ORDER BY t.id;
         XCTAssertEqual(resultSet.rows, expectedRows)
     }
 
+    func testSelectCrossJoinWithAliasedStarExpression() throws {
+        let database = MemoryBackend()
+        let setup = """
+CREATE TABLE tops(id INT NOT NULL, description TEXT NOT NULL);
+INSERT INTO tops VALUES(1, 'Purple velvet blouse');
+INSERT INTO tops VALUES(2, 'Silver silk blouse');
+INSERT INTO tops VALUES(3, 'Patterned reef suit');
+CREATE TABLE bottoms(id INT NOT NULL, description TEXT NOT NULL);
+INSERT INTO bottoms VALUES(1, 'Black velvet skirt');
+INSERT INTO bottoms VALUES(2, 'Blue shiny leggings');
+"""
+        let _ = database.executeStatements(setup)
+
+        let select = """
+SELECT b.*
+FROM tops t
+CROSS JOIN bottoms b
+WHERE t.id = b.id
+ORDER BY t.id;
+"""
+        let results = database.executeStatements(select)
+        guard let result = results.first else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+        guard case .successfulSelect(let resultSet) = result else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+
+        let expectedRows: [TableRow] = [
+            [.intValue(1), .textValue("Black velvet skirt")],
+            [.intValue(2), .textValue("Blue shiny leggings")],
+        ]
+        XCTAssertEqual(resultSet.rows, expectedRows)
+    }
+
+
     func testSelectWithOrderByClauseDescAndAsc() throws {
         let database = MemoryBackend()
         let setup = """
