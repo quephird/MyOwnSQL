@@ -374,14 +374,17 @@ class MemoryBackend {
                               case .symbol(.asterisk) = maybeStarToken.kind,
                               case .symbol(.dot) = maybeDotToken.kind {
                         if let tableName = tableAliases[alias],
-                           let table = self.tables[tableName] {
+                           let table = self.tables[tableName],
+                           let tableIndex = allTables.firstIndex(where: { $0.name == tableName })
+                        {
                             if isFirstRow {
                                 for (i, columnName) in table.columnNames.enumerated() {
                                     columns.append(Column(columnName, table.columnTypes[i]))
                                 }
                             }
+
                             for (j, _) in table.columnNames.enumerated() {
-                                resultRow.append(tableRows[i][j])
+                                resultRow.append(tableRows[tableIndex][j])
                             }
                             continue
                         } else {
