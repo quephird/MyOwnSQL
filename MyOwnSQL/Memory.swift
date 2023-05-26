@@ -310,9 +310,6 @@ class MemoryBackend {
                 if case .failure(let error) = typeCheck(expression, allTables, tableAliases) {
                     return .failure(error)
                 }
-            // TODO: Need to deprecate
-            case .star:
-                continue
             }
         }
 
@@ -457,20 +454,6 @@ class MemoryBackend {
                     }
 
                     resultRow.append(value)
-                // TODO: Need to move this logic below
-                case .star:
-                    if isFirstRow {
-                        for table in allTables {
-                            for (i, columnName) in table.columnNames.enumerated() {
-                                columns.append(Column(columnName, table.columnTypes[i]))
-                            }
-                        }
-                    }
-                    for (i, table) in allTables.enumerated() {
-                        for (j, _) in table.columnNames.enumerated() {
-                            resultRow.append(tableRows[i][j])
-                        }
-                    }
                 }
             }
             isFirstRow = false

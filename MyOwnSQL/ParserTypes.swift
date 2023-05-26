@@ -14,7 +14,6 @@ indirect enum Expression: Equatable {
 enum SelectItem: Equatable {
     case expression(Expression)
     case expressionWithAlias(Expression, Token)
-    case star
 }
 
 enum Definition: Equatable {
