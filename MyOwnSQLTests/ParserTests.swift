@@ -207,7 +207,7 @@ class ParserTests: XCTestCase {
         let expectedStatement = SelectStatement(
             SelectedTable(Token(kind: .identifier("some_table"), location: Location(line: 0, column: 14))),
             [
-                .star
+                .expression(.term(Token(kind: .symbol(.asterisk), location: Location(line: 0, column: 7))))
             ]
         )
         XCTAssertEqual(statement, expectedStatement)
@@ -319,7 +319,7 @@ class ParserTests: XCTestCase {
         var expectedStatement = SelectStatement(
             SelectedTable(Token(kind: .identifier("dresses"), location: Location(line: 0, column: 14))),
             [
-                .star
+                .expression(.term(Token(kind: .symbol(.asterisk), location: Location(line: 0, column: 7))))
             ]
         )
         expectedStatement.orderByClause = OrderByClause([
@@ -351,7 +351,7 @@ class ParserTests: XCTestCase {
         var expectedStatement = SelectStatement(
             SelectedTable(Token(kind: .identifier("dresses"), location: Location(line: 0, column: 14))),
             [
-                .star
+                .expression(.term(Token(kind: .symbol(.asterisk), location: Location(line: 0, column: 7))))
             ]
         )
         expectedStatement.orderByClause = OrderByClause([
@@ -459,7 +459,7 @@ class ParserTests: XCTestCase {
                 Token(kind: .identifier("parts"), location: Location(line: 0, column: 14))
             ),
             [
-                .star
+                .expression(.term(Token(kind: .symbol(.asterisk), location: Location(line: 0, column: 7))))
             ]
         )
         let expectedJoins = [
@@ -492,7 +492,7 @@ class ParserTests: XCTestCase {
                 Token(kind: .identifier("sp"), location: Location(line: 0, column: 29))
             ),
             [
-                .star
+                .expression(.term(Token(kind: .symbol(.asterisk), location: Location(line: 0, column: 7))))
             ],
             .binary(
                 .binary(
