@@ -228,6 +228,12 @@ class MemoryBackend {
     func selectTable(_ select: SelectStatement) -> StatementExecutionResult {
         var columns: [Column] = []
         var tableAliases: [String: String] = [:]
+        // We need to relate aliases to the order in which each correspondent
+        // table appears in the select statement; this is necessary because
+        // the same table can be joined to itself once or more, and so when
+        // we construct product rows below, we need to know which "copy" of the
+        // table we're dealing with when we resolve an alias.
+        var tableAliasIndices: [String: Int] = [:]
 
         guard case .identifier(let tableName) = select.table.name.kind else {
             return .failure(.misc("Invalid token for table name"))
@@ -240,12 +246,14 @@ class MemoryBackend {
         if let alias = select.table.alias {
             if case .identifier(let aliasName) = alias.kind {
                 tableAliases[aliasName] = tableName
+                tableAliasIndices[aliasName] = 0
             } else {
                 return .failure(.misc("Invalid token for table alias"))
             }
         }
 
         var joinTables: [Table] = []
+        var tableIndex = 1
         for join in select.joins {
             guard case .identifier(let joinTableName) = join.table.name.kind else {
                 return .failure(.misc("Unexpected token"))
@@ -259,6 +267,8 @@ class MemoryBackend {
             if let aliasToken = join.table.alias,
                case .identifier(let joinTableAlias) = aliasToken.kind {
                 tableAliases[joinTableAlias] = joinTableName
+                tableAliasIndices[joinTableAlias] = tableIndex
+                tableIndex += 1
             }
         }
         let allTables = [drivingTable] + joinTables
@@ -375,7 +385,7 @@ class MemoryBackend {
                               case .symbol(.dot) = maybeDotToken.kind {
                         if let tableName = tableAliases[alias],
                            let table = self.tables[tableName],
-                           let tableIndex = allTables.firstIndex(where: { $0.name == tableName })
+                           let tableIndex = tableAliasIndices[alias]
                         {
                             if isFirstRow {
                                 for (i, columnName) in table.columnNames.enumerated() {
