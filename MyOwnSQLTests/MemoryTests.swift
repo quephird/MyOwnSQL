@@ -783,6 +783,39 @@ ORDER BY t.id;
         XCTAssertEqual(resultSet.rows, expectedRows)
     }
 
+    func testSelectWithTableCrossJoinedWithItselfAndAliased() throws {
+        let database = MemoryBackend()
+        let setup = """
+CREATE TABLE foo(bar INT NOT NULL);
+INSERT INTO foo VALUES(1);
+INSERT INTO foo VALUES(2);
+"""
+        let _ = database.executeStatements(setup)
+
+        let select = """
+SELECT a.*, b.*
+FROM foo a
+CROSS JOIN foo b
+ORDER BY a.bar, b.bar;
+"""
+        let results = database.executeStatements(select)
+        guard let result = results.first else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+        guard case .successfulSelect(let resultSet) = result else {
+            XCTFail("Something unexpected happened")
+            return
+        }
+
+        let expectedRows: [TableRow] = [
+            [.intValue(1), .intValue(1)],
+            [.intValue(1), .intValue(2)],
+            [.intValue(2), .intValue(1)],
+            [.intValue(2), .intValue(2)],
+        ]
+        XCTAssertEqual(resultSet.rows, expectedRows)
+    }
 
     func testSelectWithOrderByClauseDescAndAsc() throws {
         let database = MemoryBackend()
