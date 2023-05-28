@@ -228,6 +228,12 @@ class MemoryBackend {
     func selectTable(_ select: SelectStatement) -> StatementExecutionResult {
         var columns: [Column] = []
         var tableAliases: [String: String] = [:]
+        // We need to relate aliases to the order in which each correspondent
+        // table appears in the select statement; this is necessary because
+        // the same table can be joined to itself once or more, and so when
+        // we construct product rows below, we need to know which "copy" of the
+        // table we're dealing with when we resolve an alias.
+        var tableAliasIndices: [String: Int] = [:]
 
         guard case .identifier(let tableName) = select.table.name.kind else {
             return .failure(.misc("Invalid token for table name"))
@@ -240,12 +246,14 @@ class MemoryBackend {
         if let alias = select.table.alias {
             if case .identifier(let aliasName) = alias.kind {
                 tableAliases[aliasName] = tableName
+                tableAliasIndices[aliasName] = 0
             } else {
                 return .failure(.misc("Invalid token for table alias"))
             }
         }
 
         var joinTables: [Table] = []
+        var tableIndex = 1
         for join in select.joins {
             guard case .identifier(let joinTableName) = join.table.name.kind else {
                 return .failure(.misc("Unexpected token"))
@@ -259,6 +267,8 @@ class MemoryBackend {
             if let aliasToken = join.table.alias,
                case .identifier(let joinTableAlias) = aliasToken.kind {
                 tableAliases[joinTableAlias] = joinTableName
+                tableAliasIndices[joinTableAlias] = tableIndex
+                tableIndex += 1
             }
         }
         let allTables = [drivingTable] + joinTables
@@ -285,6 +295,22 @@ class MemoryBackend {
         for item in select.items {
             switch item {
             case .expression(let expression):
+                if case .term(let token) = expression,
+                   case .symbol(.asterisk) = token.kind {
+                    continue
+                } else if case .binary(let maybeAliasExpression, let maybeStarExpression, let maybeDotToken) = expression,
+                          case .term(let maybeAliasToken) = maybeAliasExpression,
+                          case .identifier(let alias) = maybeAliasToken.kind,
+                          case .term(let maybeStarToken) = maybeStarExpression,
+                          case .symbol(.asterisk) = maybeStarToken.kind,
+                          case .symbol(.dot) = maybeDotToken.kind {
+                    if let _ = tableAliases[alias] {
+                        continue
+                    } else {
+                        return .failure(.misc("Invalid table alias"))
+                    }
+                }
+
                 if case .failure(let error) = typeCheck(expression, allTables, tableAliases) {
                     return .failure(error)
                 }
@@ -292,8 +318,6 @@ class MemoryBackend {
                 if case .failure(let error) = typeCheck(expression, allTables, tableAliases) {
                     return .failure(error)
                 }
-            case .star:
-                continue
             }
         }
 
@@ -334,6 +358,50 @@ class MemoryBackend {
             for (i, item) in select.items.enumerated() {
                 switch item {
                 case .expression(let expression):
+                    // NOTA BENE: We first check if we're dealing with a top-level
+                    //            star expression, and if so, we bypass the standard
+                    //            call to evaluateExpression() because it only returns
+                    //            a scalar value, not an array of them.
+                    if case .term(let token) = expression,
+                       case .symbol(.asterisk) = token.kind {
+                        if isFirstRow {
+                            for table in allTables {
+                                for (i, columnName) in table.columnNames.enumerated() {
+                                    columns.append(Column(columnName, table.columnTypes[i]))
+                                }
+                            }
+                        }
+                        for (i, table) in allTables.enumerated() {
+                            for (j, _) in table.columnNames.enumerated() {
+                                resultRow.append(tableRows[i][j])
+                            }
+                        }
+                        continue
+                    } else if case .binary(let maybeAliasExpression, let maybeStarExpression, let maybeDotToken) = expression,
+                              case .term(let maybeAliasToken) = maybeAliasExpression,
+                              case .identifier(let alias) = maybeAliasToken.kind,
+                              case .term(let maybeStarToken) = maybeStarExpression,
+                              case .symbol(.asterisk) = maybeStarToken.kind,
+                              case .symbol(.dot) = maybeDotToken.kind {
+                        if let tableName = tableAliases[alias],
+                           let table = self.tables[tableName],
+                           let tableIndex = tableAliasIndices[alias]
+                        {
+                            if isFirstRow {
+                                for (i, columnName) in table.columnNames.enumerated() {
+                                    columns.append(Column(columnName, table.columnTypes[i]))
+                                }
+                            }
+
+                            for (j, _) in table.columnNames.enumerated() {
+                                resultRow.append(tableRows[tableIndex][j])
+                            }
+                            continue
+                        } else {
+                            return .failure(.misc("Invalid table alias"))
+                        }
+                    }
+
                     guard let value = evaluateExpression(expression, allTables, tableAliases, tableRows) else {
                         return .failure(.misc("Unable to evaluate expression in SELECT"))
                     }
@@ -401,20 +469,6 @@ class MemoryBackend {
                     }
 
                     resultRow.append(value)
-                // Need to think about how to handle alias.*
-                case .star:
-                    if isFirstRow {
-                        for table in allTables {
-                            for (i, columnName) in table.columnNames.enumerated() {
-                                columns.append(Column(columnName, table.columnTypes[i]))
-                            }
-                        }
-                    }
-                    for (i, table) in allTables.enumerated() {
-                        for (j, _) in table.columnNames.enumerated() {
-                            resultRow.append(tableRows[i][j])
-                        }
-                    }
                 }
             }
             isFirstRow = false

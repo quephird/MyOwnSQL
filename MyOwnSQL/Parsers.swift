@@ -44,7 +44,7 @@ func parseTermExpression(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperRe
     // TODO: Consider instead being able to handle tokens
     //       for true and false keywords, and removing the
     //       boolean token type
-    case .identifier, .string, .numeric, .boolean, .keyword(.null):
+    case .identifier, .string, .numeric, .boolean, .keyword(.null), .symbol(.asterisk):
         return .success(tokenCursor+1, Expression.term(maybeTermToken))
     default:
         return .failure("Term expression not found")
@@ -182,27 +182,24 @@ func parseSelectItems(_ tokens: [Token], _ tokenCursor: Int) -> ParseHelperResul
     var items: [SelectItem] = []
 
     while tokenCursorCopy < tokens.count {
-        if case .symbol(.asterisk) = tokens[tokenCursorCopy].kind {
-            items.append(.star)
+        let delimiters: [TokenKind] = [.keyword(.from), .keyword(.as), .symbol(.comma)]
+        guard case .success(let newTokenCursorCopy, let expression) = parseExpression(tokens, tokenCursorCopy, delimiters, 0) else {
+            return .failure("Expression expected but not found")
+        }
+        tokenCursorCopy = newTokenCursorCopy
+
+        // TODO: Need to check if previously consumed token was an asterisk
+        if case .keyword(.as) = tokens[tokenCursorCopy].kind,
+           !expression.isTopLevelStarExpression {
+            tokenCursorCopy += 1
+
+            guard case .identifier = tokens[tokenCursorCopy].kind else {
+                return .failure("Identifier expected after AS keyword")
+            }
+            items.append(.expressionWithAlias(expression, tokens[tokenCursorCopy]))
             tokenCursorCopy += 1
         } else {
-            let delimiters: [TokenKind] = [.keyword(.from), .keyword(.as), .symbol(.comma)]
-            guard case .success(let newTokenCursorCopy, let expression) = parseExpression(tokens, tokenCursorCopy, delimiters, 0) else {
-                return .failure("Expression expected but not found")
-            }
-            tokenCursorCopy = newTokenCursorCopy
-
-            if case .keyword(.as) = tokens[tokenCursorCopy].kind {
-                tokenCursorCopy += 1
-
-                guard case .identifier = tokens[tokenCursorCopy].kind else {
-                    return .failure("Identifier expected after AS keyword")
-                }
-                items.append(.expressionWithAlias(expression, tokens[tokenCursorCopy]))
-                tokenCursorCopy += 1
-            } else {
-                items.append(.expression(expression))
-            }
+            items.append(.expression(expression))
         }
 
         guard tokenCursorCopy < tokens.count, case .symbol(.comma) = tokens[tokenCursorCopy].kind else {
