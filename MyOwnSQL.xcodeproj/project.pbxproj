@@ -18,6 +18,7 @@
 		87C35EBD2995F5A0004581D5 /* Memory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87C35EB92993276C004581D5 /* Memory.swift */; };
 		87C35EBF29B7E2E6004581D5 /* StatementError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87C35EBE29B7E2E6004581D5 /* StatementError.swift */; };
 		87C35EC029B7E385004581D5 /* StatementError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87C35EBE29B7E2E6004581D5 /* StatementError.swift */; };
+		87CB4C052A250F9300441A76 /* LineNoise in Frameworks */ = {isa = PBXBuildFile; productRef = 87CB4C042A250F9300441A76 /* LineNoise */; };
 		87F0A613298B04380086F9D2 /* ParserTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87F0A612298B04380086F9D2 /* ParserTypes.swift */; };
 		87F0A616298DD3050086F9D2 /* Parsers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87F0A615298DD3050086F9D2 /* Parsers.swift */; };
 		87F0A61829905C500086F9D2 /* ParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87F0A61729905C500086F9D2 /* ParserTests.swift */; };
@@ -57,6 +58,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				87CB4C052A250F9300441A76 /* LineNoise in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -128,6 +130,9 @@
 			dependencies = (
 			);
 			name = MyOwnSQL;
+			packageProductDependencies = (
+				87CB4C042A250F9300441A76 /* LineNoise */,
+			);
 			productName = MyOwnSQL;
 			productReference = 8728DA1A296772E500AB66A6 /* MyOwnSQL */;
 			productType = "com.apple.product-type.tool";
@@ -176,6 +181,9 @@
 				Base,
 			);
 			mainGroup = 8728DA11296772E500AB66A6;
+			packageReferences = (
+				87CB4C032A250F9300441A76 /* XCRemoteSwiftPackageReference "linenoise-swift" */,
+			);
 			productRefGroup = 8728DA1B296772E500AB66A6 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -426,6 +434,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		87CB4C032A250F9300441A76 /* XCRemoteSwiftPackageReference "linenoise-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/andybest/linenoise-swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.0.3;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		87CB4C042A250F9300441A76 /* LineNoise */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 87CB4C032A250F9300441A76 /* XCRemoteSwiftPackageReference "linenoise-swift" */;
+			productName = LineNoise;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 8728DA12296772E500AB66A6 /* Project object */;
 }
