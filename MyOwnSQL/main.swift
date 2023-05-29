@@ -5,37 +5,49 @@
 //  Created by Danielle Kefford on 1/5/23.
 //
 
-import Foundation
+import LineNoise
 
+let ln = LineNoise()
 let database = MemoryBackend()
+
+do {
+    try ln.clearScreen()
+} catch {
+    print(error)
+}
 print("Welcome to MyOwnSQL!\n")
 
-while true {
-    print("SQL> ", terminator: "")
+var done = false
+while !done {
+    do {
+        let input = try ln.getLine(prompt: "SQL> ")
+        ln.addHistory(input)
 
-    guard let input = readLine() else {
-        print("Please enter a statement")
-        continue
-    }
-
-    let results = database.executeStatements(input)
-    for result in results {
-        switch result {
-        case .failure(let error):
-            print(error.errorDescription)
-        case .successfulCreateTable:
-            print("Table created")
-        case .successfulDropTable:
-            print("Table dropped")
-        case .successfulInsert(let rowCount):
-            print("\(rowCount) row(s) inserted")
-        case .successfulSelect(let resultSet):
-            printResultSet(resultSet)
-        case .successfulDelete(let rowCount):
-            print("\(rowCount) row(s) deleted")
-        case .successfulUpdate(let rowCount):
-            print("\(rowCount) row(s) updated")
+        let results = database.executeStatements(input)
+        for result in results {
+            switch result {
+            case .failure(let error):
+                print("\n\(error.errorDescription)")
+            case .successfulCreateTable:
+                print("\nTable created")
+            case .successfulDropTable:
+                print("\nTable dropped")
+            case .successfulInsert(let rowCount):
+                print("\n\(rowCount) row(s) inserted")
+            case .successfulSelect(let resultSet):
+                print("\n")
+                printResultSet(resultSet)
+            case .successfulDelete(let rowCount):
+                print("\n\(rowCount) row(s) deleted")
+            case .successfulUpdate(let rowCount):
+                print("\n\(rowCount) row(s) updated")
+            }
         }
+    } catch LinenoiseError.EOF {
+        print("\nExiting...")
+        done = true
+    } catch {
+        print("\n\(error)")
     }
 }
 
